@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["on monday"],
+  "platformAutomerge": false,
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "groupName": "Gradle dependencies",
+      "groupSlug": "gradle"
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "groupSlug": "npm"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    }
+  ]
+}
