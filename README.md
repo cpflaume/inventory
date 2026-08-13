@@ -67,7 +67,8 @@ cd backend  && ./gradlew test        # JUnit + Testcontainers-Postgres (braucht 
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 # Playwright-E2E gegen das echte Backend (ein Test je Haupt-Use-Case). Backend muss laufen:
 docker compose up -d                 # Postgres + Backend (mit Seed) + Frontend
-cd frontend && npm run e2e
+cd frontend && npm run e2e           # Videos nur bei Fehlern
+cd frontend && npm run e2e:video     # Videos ALLER Tests aufzeichnen (E2E_VIDEO=all)
 ```
 
 ## Deployment

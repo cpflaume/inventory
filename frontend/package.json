@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:video": "E2E_VIDEO=all playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",

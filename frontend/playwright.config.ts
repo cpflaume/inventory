@@ -7,6 +7,11 @@ import { defineConfig, devices } from '@playwright/test';
 // eigener Schritt startet die gebaute Jar gegen einen Postgres-Service-Container).
 const PORT = 5174;
 
+// Video-Aufzeichnung. Default: alle Tests aufnehmen, aber nur die Videos
+// FEHLGESCHLAGENER Tests behalten. Mit E2E_VIDEO=all werden die Videos ALLER
+// Tests behalten (z.B. `npm run e2e:video` oder CI-Input `record_all_videos`).
+const video: 'on' | 'retain-on-failure' = process.env.E2E_VIDEO === 'all' ? 'on' : 'retain-on-failure';
+
 export default defineConfig({
   testDir: './e2e',
   // Ein gemeinsames Backend → Tests seriell, damit sie sich nicht ins Gehege kommen.
@@ -18,6 +23,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
+    video,
   },
   projects: [
     {

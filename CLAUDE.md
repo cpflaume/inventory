@@ -37,6 +37,9 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
   Frontend (Vite, Port 5174, proxied `/api` → Backend `:8080`); das Backend muss laufen
   (lokal `docker compose up`, in CI eigener Schritt gegen einen Postgres-Service-Container).
   Lauf: `npm run e2e` (CI installiert Chromium; lokal ggf. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` setzen).
+  Videos: Default nur bei fehlgeschlagenen Tests; `E2E_VIDEO=all` (bzw. `npm run e2e:video`) nimmt
+  alle auf. In CI werden Videos als Artefakt `e2e-videos` hochgeladen; der `workflow_dispatch`-Input
+  `record_all_videos` erzwingt die Aufzeichnung aller Videos.
 
 ## Nicht in v1 (Folge-Features)
 Nextcloud-OIDC/SSO, aktiv zusammengestellte Packliste (Soll/Ist), Foto-Anhänge an Mängeln.
