@@ -18,7 +18,9 @@ import de.grauerreiter.jurtenburg.web.Views.ShelfView;
 import de.grauerreiter.jurtenburg.web.Views.WarehouseView;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -173,6 +175,10 @@ public class LocationService {
     public WarehouseView warehouse(UUID depotId) {
         List<Location> all = locations.findByDepotIdOrderByLabelAsc(depotId);
         List<Item> allItems = items.findByDepotIdOrderByNameAsc(depotId);
+        // Offene Mängel einmal laden und je Ort zählen (statt pro Kiste erneut zu queryen).
+        Map<UUID, Long> openDefectsByLocation = defects.findByDepotIdOrderByCreatedAtDesc(depotId).stream()
+                .filter(d -> d.getStatus() == DefectStatus.OPEN && d.getLocationId() != null)
+                .collect(Collectors.groupingBy(d -> d.getLocationId(), Collectors.counting()));
 
         List<ShelfView> shelves = new ArrayList<>();
         List<BoxView> freestanding = new ArrayList<>();
@@ -184,7 +190,7 @@ public class LocationService {
             List<CellView> cells = new ArrayList<>();
             for (int r = 0; r < loc.getGridRows(); r++) {
                 for (int c = 0; c < loc.getGridCols(); c++) {
-                    BoxView box = boxInCell(all, allItems, loc.getId(), r, c);
+                    BoxView box = boxInCell(all, allItems, openDefectsByLocation, loc.getId(), r, c);
                     List<ItemResponse> loose = looseItemsInCell(allItems, loc.getId(), r, c);
                     if (box != null || !loose.isEmpty()) {
                         cells.add(new CellView(r, c, box, loose));
@@ -196,7 +202,7 @@ public class LocationService {
 
         for (Location loc : all) {
             if (loc.getType() == LocationType.BOX && loc.getParentLocationId() == null) {
-                freestanding.add(toBoxView(loc, allItems));
+                freestanding.add(toBoxView(loc, allItems, openDefectsByLocation));
             }
         }
 
@@ -208,14 +214,15 @@ public class LocationService {
         return new WarehouseView(shelves, freestanding, unassigned);
     }
 
-    private BoxView boxInCell(List<Location> all, List<Item> allItems, UUID shelfId, int row, int col) {
+    private BoxView boxInCell(List<Location> all, List<Item> allItems, Map<UUID, Long> openDefectsByLocation,
+            UUID shelfId, int row, int col) {
         return all.stream()
                 .filter(l -> l.getType() == LocationType.BOX
                         && shelfId.equals(l.getParentLocationId())
                         && Integer.valueOf(row).equals(l.getRow())
                         && Integer.valueOf(col).equals(l.getCol()))
                 .findFirst()
-                .map(l -> toBoxView(l, allItems))
+                .map(l -> toBoxView(l, allItems, openDefectsByLocation))
                 .orElse(null);
     }
 
@@ -228,11 +235,9 @@ public class LocationService {
                 .toList();
     }
 
-    private BoxView toBoxView(Location box, List<Item> allItems) {
+    private BoxView toBoxView(Location box, List<Item> allItems, Map<UUID, Long> openDefectsByLocation) {
         int count = (int) allItems.stream().filter(i -> box.getId().equals(i.getLocationId())).count();
-        int openDefects = (int) defects.findByDepotIdOrderByCreatedAtDesc(box.getDepotId()).stream()
-                .filter(d -> d.getStatus() == DefectStatus.OPEN && box.getId().equals(d.getLocationId()))
-                .count();
+        int openDefects = openDefectsByLocation.getOrDefault(box.getId(), 0L).intValue();
         return new BoxView(box.getId(), box.getLabel(), count, openDefects);
     }
 

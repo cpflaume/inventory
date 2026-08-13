@@ -29,25 +29,25 @@ public class KitController {
 
     @GetMapping
     public List<KitResponse> list(@PathVariable UUID depotId) {
-        return kitService.list(depotId).stream().map(KitResponse::of).toList();
+        return kitService.list(depotId);
     }
 
     /** Stückliste eines Bausatzes ("was gehört zu diesem Zelt", druckbar). */
     @GetMapping("/{kitId}")
     public KitResponse get(@PathVariable UUID depotId, @PathVariable UUID kitId) {
-        return KitResponse.of(kitService.getInDepot(depotId, kitId));
+        return kitService.get(depotId, kitId);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public KitResponse create(@PathVariable UUID depotId, @Valid @RequestBody KitRequest req) {
-        return KitResponse.of(kitService.create(depotId, req));
+        return kitService.create(depotId, req);
     }
 
     @PutMapping("/{kitId}")
     public KitResponse update(@PathVariable UUID depotId, @PathVariable UUID kitId,
             @Valid @RequestBody KitRequest req) {
-        return KitResponse.of(kitService.update(depotId, kitId, req));
+        return kitService.update(depotId, kitId, req);
     }
 
     @DeleteMapping("/{kitId}")

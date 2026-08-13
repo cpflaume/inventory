@@ -116,6 +116,25 @@ class WarehouseApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void defectReportRejectsForeignItemReference() throws Exception {
+        MockMvc mvc = mvc();
+        String depotA = createDepot("Lager-A");
+        String depotB = createDepot("Lager-B");
+
+        String itemBody = mvc.perform(post("/api/depots/{d}/items", depotA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Dach\",\"quantity\":1}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String itemId = json.readTree(itemBody).get("id").asText();
+
+        // Mängelmeldung in Lager B, die ein Item aus Lager A referenziert → 404.
+        mvc.perform(post("/api/depots/{d}/defect-reports", depotB).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Loch\",\"severity\":\"MACKE\",\"itemId\":\"" + itemId + "\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void tenantIsolationHidesForeignDepotEntities() throws Exception {
         MockMvc mvc = mvc();
         String depotA = createDepot("Lager-A");

@@ -44,20 +44,31 @@ public class InventoryService {
             labels.put(loc.getId(), loc.getLabel());
         }
 
-        Map<String, List<ItemResponse>> grouped = new LinkedHashMap<>();
-        Map<String, UUID> groupLocationId = new LinkedHashMap<>();
+        // Nach locationId gruppieren (nicht nach Label) — gleichnamige Orte bleiben getrennt.
+        Map<UUID, List<ItemResponse>> byLocation = new LinkedHashMap<>();
+        List<ItemResponse> unassigned = new ArrayList<>();
         int total = 0;
         for (Item item : items.findByDepotIdOrderByNameAsc(depotId)) {
-            String key = item.getLocationId() == null
-                    ? "Nicht einsortiert"
-                    : labels.getOrDefault(item.getLocationId(), "Unbekannter Ort");
-            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(ItemResponse.of(item));
-            groupLocationId.putIfAbsent(key, item.getLocationId());
+            if (item.getLocationId() == null) {
+                unassigned.add(ItemResponse.of(item));
+            } else {
+                byLocation.computeIfAbsent(item.getLocationId(), k -> new ArrayList<>())
+                        .add(ItemResponse.of(item));
+            }
             total++;
         }
 
         List<InventoryGroup> groups = new ArrayList<>();
-        grouped.forEach((label, list) -> groups.add(new InventoryGroup(groupLocationId.get(label), label, list)));
+        // In Ort-Reihenfolge (nach Label sortiert) ausgeben, nur Orte mit Items.
+        labels.forEach((locationId, label) -> {
+            List<ItemResponse> list = byLocation.get(locationId);
+            if (list != null) {
+                groups.add(new InventoryGroup(locationId, label, list));
+            }
+        });
+        if (!unassigned.isEmpty()) {
+            groups.add(new InventoryGroup(null, "Nicht einsortiert", unassigned));
+        }
         return new InventoryView(depot.getName(), groups, total);
     }
 }

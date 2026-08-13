@@ -1,7 +1,6 @@
 package de.grauerreiter.jurtenburg.repo;
 
 import de.grauerreiter.jurtenburg.domain.Location;
-import de.grauerreiter.jurtenburg.domain.LocationType;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,8 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LocationRepository extends JpaRepository<Location, UUID> {
 
     List<Location> findByDepotIdOrderByLabelAsc(UUID depotId);
-
-    List<Location> findByDepotIdAndType(UUID depotId, LocationType type);
 
     List<Location> findByParentLocationId(UUID parentLocationId);
 

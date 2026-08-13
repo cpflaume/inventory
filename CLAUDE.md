@@ -28,8 +28,13 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 ## Tests
-- Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers).
-- Frontend: `WarehousePage.test.tsx` (virtuelles Lager rendert Regal/Kiste/freistehend).
+- Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
+  `KitApiTest` (Bausatz anlegen+listen).
+- Frontend Unit: `WarehousePage.test.tsx` (virtuelles Lager rendert Regal/Kiste/freistehend).
+- Frontend E2E (`frontend/e2e/`, Playwright): ein Spec je Haupt-Use-Case (Lager, virtuelles Lager,
+  Material, Mängelmeldung, Drucken). Die API wird im Browser gemockt (`e2e/mocks.ts`, `page.route`),
+  kein Backend nötig. Lauf: `npm run e2e` (CI installiert Chromium; lokal ggf.
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE` auf ein vorhandenes Binary setzen).
 
 ## Nicht in v1 (Folge-Features)
 Nextcloud-OIDC/SSO, aktiv zusammengestellte Packliste (Soll/Ist), Foto-Anhänge an Mängeln.

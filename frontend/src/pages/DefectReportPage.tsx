@@ -22,8 +22,8 @@ export default function DefectReportPage() {
   const create = useMutation({
     mutationFn: () =>
       api.createDefect(depotId, {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim() || undefined,
         severity,
         itemId: itemId || null,
       }),

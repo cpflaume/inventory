@@ -20,7 +20,12 @@ export default function MaterialPage() {
   const boxes = locations.data?.filter((l) => l.type === 'BOX') ?? [];
 
   const create = useMutation({
-    mutationFn: () => api.createItem(depotId, form),
+    mutationFn: () =>
+      api.createItem(depotId, {
+        ...form,
+        category: form.category?.trim() || undefined,
+        note: form.note?.trim() || undefined,
+      }),
     onSuccess: () => {
       setForm(empty);
       qc.invalidateQueries({ queryKey: ['items', depotId] });

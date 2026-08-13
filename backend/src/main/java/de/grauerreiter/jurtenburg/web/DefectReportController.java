@@ -3,6 +3,8 @@ package de.grauerreiter.jurtenburg.web;
 import de.grauerreiter.jurtenburg.domain.DefectReport;
 import de.grauerreiter.jurtenburg.repo.DefectReportRepository;
 import de.grauerreiter.jurtenburg.repo.DepotRepository;
+import de.grauerreiter.jurtenburg.service.ItemService;
+import de.grauerreiter.jurtenburg.service.LocationService;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.NotFoundException;
 import de.grauerreiter.jurtenburg.web.Dtos.DefectReportRequest;
 import de.grauerreiter.jurtenburg.web.Dtos.DefectReportResponse;
@@ -27,10 +29,15 @@ public class DefectReportController {
 
     private final DefectReportRepository reports;
     private final DepotRepository depots;
+    private final ItemService itemService;
+    private final LocationService locationService;
 
-    public DefectReportController(DefectReportRepository reports, DepotRepository depots) {
+    public DefectReportController(DefectReportRepository reports, DepotRepository depots,
+            ItemService itemService, LocationService locationService) {
         this.reports = reports;
         this.depots = depots;
+        this.itemService = itemService;
+        this.locationService = locationService;
     }
 
     @GetMapping
@@ -44,6 +51,13 @@ public class DefectReportController {
     public DefectReportResponse create(@PathVariable UUID depotId, @Valid @RequestBody DefectReportRequest req) {
         if (!depots.existsById(depotId)) {
             throw new NotFoundException("Lager nicht gefunden: " + depotId);
+        }
+        // Referenzierte Entities müssen zum selben Lager gehören (Mandantentrennung).
+        if (req.itemId() != null) {
+            itemService.getInDepot(depotId, req.itemId());
+        }
+        if (req.locationId() != null) {
+            locationService.getInDepot(depotId, req.locationId());
         }
         DefectReport report = new DefectReport(depotId, req.title(), req.severity());
         report.setItemId(req.itemId());

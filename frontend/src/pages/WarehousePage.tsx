@@ -253,8 +253,9 @@ function AddLocationDialog({
 
   return (
     <div className="no-print fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <Card className="w-full max-w-md p-5" >
-        <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <Card className="p-5">
+          <div className="space-y-4">
           <h3 className="font-bold text-moos-800">
             {mode === 'shelf' ? '🪵 Neues Regal' : '📦 Neue Kiste'}
           </h3>
@@ -321,9 +322,10 @@ function AddLocationDialog({
             >
               Speichern
             </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
