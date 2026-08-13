@@ -7,6 +7,53 @@ export type LocationType = 'SHELF' | 'BOX';
 export type Severity = 'MACKE' | 'DEFEKT';
 export type DefectStatus = 'OPEN' | 'RESOLVED';
 
+// ---- Auth / Benutzerverwaltung ----
+
+export type AuthProvider = 'LOCAL' | 'OIDC';
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'DISABLED';
+export type SystemRole = 'USER' | 'ADMIN';
+export type DepotRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
+
+export interface GroupSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface UserSummary {
+  id: string;
+  username: string;
+  email?: string | null;
+  displayName?: string | null;
+  provider: AuthProvider;
+  status: UserStatus;
+  systemRole: SystemRole;
+  groups: GroupSummary[];
+  createdAt: string;
+}
+
+export interface DepotAccess {
+  depotId: string;
+  depotName: string;
+  role: DepotRole;
+}
+
+export interface MeResponse {
+  user: UserSummary;
+  depots: DepotAccess[];
+}
+
+export interface AuthResponse {
+  token: string;
+  user: UserSummary;
+}
+
+export interface GroupDepotMapping {
+  depotId: string;
+  depotName: string;
+  role: DepotRole;
+}
+
 export interface Depot {
   id: string;
   name: string;

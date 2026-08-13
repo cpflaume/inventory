@@ -1,24 +1,56 @@
 // Schlanker, typsicherer API-Client (fetch). Basis-URL ist relativ (/api),
 // im Dev über den Vite-Proxy, in Produktion über Caddy an denselben Host.
 import type {
+  AuthResponse,
   BoxContentsView,
   DefectReport,
   Depot,
+  DepotRole,
+  GroupDepotMapping,
+  GroupSummary,
   InventoryView,
   Item,
   Kit,
   Location,
+  MeResponse,
   Severity,
+  SystemRole,
+  UserSummary,
   WarehouseView,
 } from './types';
 
 const BASE = '/api';
+const TOKEN_KEY = 'jurtenburg_token';
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+// Wird von der AuthProvider gesetzt, um auf 401 zentral zu reagieren (Logout).
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
   const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...init,
   });
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+  }
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`;
     try {
@@ -65,6 +97,33 @@ export interface DefectInput {
 }
 
 export const api = {
+  // ---- Auth ----
+  register: (body: { username: string; email?: string; displayName?: string; password: string }) =>
+    http<UserSummary>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+  login: (body: { username: string; password: string }) =>
+    http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  me: () => http<MeResponse>('/auth/me'),
+
+  // ---- Admin ----
+  adminUsers: () => http<UserSummary[]>('/admin/users'),
+  approveUser: (id: string) => http<UserSummary>(`/admin/users/${id}/approve`, { method: 'POST' }),
+  setSystemRole: (id: string, systemRole: SystemRole) =>
+    http<UserSummary>(`/admin/users/${id}/system-role`, { method: 'POST', body: JSON.stringify({ systemRole }) }),
+  addUserToGroup: (id: string, groupId: string) =>
+    http<UserSummary>(`/admin/users/${id}/groups`, { method: 'POST', body: JSON.stringify({ groupId }) }),
+  removeUserFromGroup: (id: string, groupId: string) =>
+    http<UserSummary>(`/admin/users/${id}/groups/${groupId}`, { method: 'DELETE' }),
+  adminGroups: () => http<GroupSummary[]>('/admin/groups'),
+  createGroup: (body: { name: string; description?: string }) =>
+    http<GroupSummary>('/admin/groups', { method: 'POST', body: JSON.stringify(body) }),
+  deleteGroup: (id: string) => http<void>(`/admin/groups/${id}`, { method: 'DELETE' }),
+  groupDepots: (id: string) => http<GroupDepotMapping[]>(`/admin/groups/${id}/depots`),
+  mapGroupDepot: (id: string, body: { depotId: string; role: DepotRole }) =>
+    http<GroupDepotMapping>(`/admin/groups/${id}/depots`, { method: 'POST', body: JSON.stringify(body) }),
+  unmapGroupDepot: (id: string, depotId: string) =>
+    http<void>(`/admin/groups/${id}/depots/${depotId}`, { method: 'DELETE' }),
+
+  // ---- Fachdaten ----
   listDepots: () => http<Depot[]>('/depots'),
   getDepot: (d: string) => http<Depot>(`/depots/${d}`),
   createDepot: (body: { name: string; description?: string }) =>

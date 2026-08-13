@@ -12,6 +12,12 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
 ## Konventionen
 - **Mandantentrennung**: jede fachliche Entity trägt `depot_id`; Zugriffe laufen depot-scoped
   (`getInDepot(...)` in den Services → 404 bei fremdem Lager). Neue Entities analog anlegen.
+- **Auth/Rechte** (`security/`): App-JWT (HS256, jjwt) über `JwtAuthenticationFilter`; Principal
+  `AppUserDetails`. Autorisierung auf Lager-Ebene zentral im `DepotAccessInterceptor` (`/api/depots/**`)
+  via `AccessService` (Gruppe→Lager-Mapping, höchste Rolle gewinnt; Plattform-Admin sieht alles).
+  `/api/admin/**` = Plattform-Admin. Mehrere Auth-Provider: jeder mündet im selben App-JWT; OIDC dockt
+  über `UserProvisioningService` an. Benutzer: `AppUser` (LOCAL/OIDC, PENDING→ACTIVE), `UserGroup`,
+  `GroupDepotAccess`.
 - **Aufräumorte**: `Location` mit Typ `SHELF` (Fach-Raster `gridRows`×`gridCols`, 2×1…8×8) oder
   `BOX` (im Regalfach via `parentLocationId`+`row`/`col`, sonst freistehend). Fach-Regel
   „Kiste XOR lose Items" wird in `LocationService.assertCellFree` durchgesetzt — beim Erweitern
@@ -29,11 +35,13 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 
 ## Tests
 - Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
-  `KitApiTest` (Bausatz anlegen+listen).
+  `KitApiTest` (Bausatz anlegen+listen), `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff).
+  Integrationstests laufen als Plattform-Admin (`adminMockMvc`); `AuthApiTest` nutzt echte Tokens.
 - Frontend Unit: `WarehousePage.test.tsx` (virtuelles Lager rendert Regal/Kiste/freistehend).
-- Frontend E2E (`frontend/e2e/`, Playwright): ein Spec je Haupt-Use-Case (Lager, virtuelles Lager,
-  Material, Mängelmeldung, Drucken), **gegen das echte Backend** mit Seed-Testdaten
-  (`APP_SEED_DEMO=true`, siehe `config/DemoDataSeeder`). Der Playwright-`webServer` startet nur das
+- Frontend E2E (`frontend/e2e/`, Playwright): ein Spec je Haupt-Use-Case (Auth/Login+Registrierung,
+  Lager, virtuelles Lager, Material, Mängelmeldung, Drucken), **gegen das echte Backend** mit
+  Seed-Testdaten (`APP_SEED_DEMO=true`, siehe `config/DemoDataSeeder`). Ein `globalSetup` meldet sich
+  einmal als Admin an (storageState); der Auth-Spec nutzt leeren storageState. Der Playwright-`webServer` startet nur das
   Frontend (Vite, Port 5174, proxied `/api` → Backend `:8080`); das Backend muss laufen
   (lokal `docker compose up`, in CI eigener Schritt gegen einen Postgres-Service-Container).
   Lauf: `npm run e2e` (CI installiert Chromium; lokal ggf. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` setzen).

@@ -20,10 +20,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
+  // Einmal als Admin anmelden; alle Specs starten mit diesem Login (storageState).
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
     video,
+    storageState: 'e2e/.auth/admin.json',
   },
   projects: [
     {

@@ -39,3 +39,12 @@ app:
     # In Produktion via CORS_ALLOWED_ORIGINS überschrieben.
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
   seed-demo: ${APP_SEED_DEMO:true}
+  jwt:
+    # Dev-Default (nur lokal!). In Produktion via JWT_SECRET (>= 32 Bytes) setzen.
+    secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-please-32bytes}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    issuer: jurtenburg
+  admin:
+    # Bootstrap-Admin: wird beim Start angelegt, falls noch kein Admin existiert.
+    username: ${APP_ADMIN_USERNAME:admin}
+    password: ${APP_ADMIN_PASSWORD:admin12345}

@@ -1,24 +1,33 @@
 package de.grauerreiter.jurtenburg.config;
 
+import de.grauerreiter.jurtenburg.domain.AppUser;
+import de.grauerreiter.jurtenburg.domain.AuthProvider;
 import de.grauerreiter.jurtenburg.domain.ConditionFlag;
 import de.grauerreiter.jurtenburg.domain.DefectReport;
 import de.grauerreiter.jurtenburg.domain.Depot;
+import de.grauerreiter.jurtenburg.domain.DepotRole;
+import de.grauerreiter.jurtenburg.domain.GroupDepotAccess;
 import de.grauerreiter.jurtenburg.domain.Item;
 import de.grauerreiter.jurtenburg.domain.Kit;
 import de.grauerreiter.jurtenburg.domain.KitPosition;
 import de.grauerreiter.jurtenburg.domain.Location;
 import de.grauerreiter.jurtenburg.domain.LocationType;
 import de.grauerreiter.jurtenburg.domain.Severity;
+import de.grauerreiter.jurtenburg.domain.UserGroup;
+import de.grauerreiter.jurtenburg.repo.AppUserRepository;
 import de.grauerreiter.jurtenburg.repo.DefectReportRepository;
 import de.grauerreiter.jurtenburg.repo.DepotRepository;
+import de.grauerreiter.jurtenburg.repo.GroupDepotAccessRepository;
 import de.grauerreiter.jurtenburg.repo.ItemRepository;
 import de.grauerreiter.jurtenburg.repo.KitRepository;
 import de.grauerreiter.jurtenburg.repo.LocationRepository;
+import de.grauerreiter.jurtenburg.repo.UserGroupRepository;
 import java.util.UUID;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Legt beim Start ein kleines Beispiel-Lager an, damit das virtuelle Lager
@@ -30,7 +39,9 @@ public class DemoDataSeeder {
 
     @Bean
     CommandLineRunner seedDemoData(DepotRepository depots, LocationRepository locations,
-            ItemRepository items, KitRepository kits, DefectReportRepository defects) {
+            ItemRepository items, KitRepository kits, DefectReportRepository defects,
+            UserGroupRepository userGroups, AppUserRepository appUsers,
+            GroupDepotAccessRepository groupDepotAccess, PasswordEncoder passwordEncoder) {
         return args -> {
             if (depots.count() > 0) {
                 return;
@@ -100,6 +111,26 @@ public class DemoDataSeeder {
             defect.setDescription("Handtellergroßes Loch, sollte vor dem nächsten Lager geflickt werden.");
             defect.setReporter("Demo");
             defects.save(defect);
+
+            // Gruppen + Benutzer: eine Gruppe mit EDITOR-Zugriff auf dieses Lager,
+            // ein Mitglied (aktiv) und ein noch nicht freigeschalteter Benutzer.
+            UserGroup team = userGroups.save(new UserGroup(
+                    "Grauer Reiter Team", "Materialwarte des Stamms."));
+            groupDepotAccess.save(new GroupDepotAccess(team.getId(), depotId, DepotRole.EDITOR));
+
+            AppUser max = new AppUser("max", AuthProvider.LOCAL);
+            max.setDisplayName("Max Mustermann");
+            max.setEmail("max@example.org");
+            max.setPasswordHash(passwordEncoder.encode("max12345"));
+            max.approve();
+            max.getGroups().add(team);
+            appUsers.save(max);
+
+            AppUser neu = new AppUser("neu", AuthProvider.LOCAL);
+            neu.setDisplayName("Neu Angemeldet");
+            neu.setPasswordHash(passwordEncoder.encode("neu12345"));
+            // bleibt PENDING → Demo für die Admin-Freigabe
+            appUsers.save(neu);
         };
     }
 }
