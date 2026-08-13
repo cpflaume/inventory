@@ -35,5 +35,7 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    # Dev-Default erlaubt den Vite-Dev-Server (5173) und den E2E-Port (5174).
+    # In Produktion via CORS_ALLOWED_ORIGINS überschrieben.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
   seed-demo: ${APP_SEED_DEMO:true}

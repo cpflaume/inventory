@@ -1,18 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { emptyState, mockApi } from './mocks';
+import { openSeededDepot } from './helpers';
 
-// Use-Case: Mängelmeldung am Lagerplatz abgeben.
+// Use-Case: Mängel ansehen (geseedet) und am Lagerplatz einen neuen melden.
 test('Mängelmeldung abgeben', async ({ page }) => {
-  await mockApi(page, emptyState());
+  await openSeededDepot(page);
+  await page.getByRole('link', { name: /Mängel/ }).click();
 
-  await page.goto('/lager/d1/mangel');
-  await expect(page.getByRole('heading', { name: /Mängelmeldung/ })).toBeVisible();
+  // Aus dem Seed vorhandener offener Mangel.
+  await expect(page.getByText('Loch in Seitenplane')).toBeVisible();
 
-  // Schweregrad "Defekt" wählen und Titel eingeben.
+  // Neuen Mangel melden.
   await page.getByRole('button', { name: /Defekt/ }).click();
-  await page.getByPlaceholder(/Was ist kaputt/).fill('Loch in Seitenplane');
+  const title = `Riss im Dach ${Date.now()}`;
+  await page.getByPlaceholder(/Was ist kaputt/).fill(title);
   await page.getByRole('button', { name: 'Mangel melden' }).click();
 
-  // Erscheint in der Liste der offenen Mängel.
-  await expect(page.getByText('Loch in Seitenplane')).toBeVisible();
+  await expect(page.getByText(title)).toBeVisible();
 });

@@ -1,17 +1,18 @@
 import { expect, test } from '@playwright/test';
-import { emptyState, mockApi } from './mocks';
+import { SEED_DEPOT } from './helpers';
 
-// Use-Case: ein Lager anlegen und in der Übersicht sehen.
-test('Lager anlegen', async ({ page }) => {
-  const state = emptyState();
-  state.depots = [];
-  await mockApi(page, state);
-
+// Use-Case: Lager-Übersicht (geseedetes Lager sichtbar) und ein neues Lager anlegen.
+test('Lager-Übersicht und Lager anlegen', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Jurtenburg' })).toBeVisible();
 
-  await page.getByPlaceholder(/Neues Lager/).fill('Stamm Grauer Reiter');
+  // Aus dem Seed vorhandenes Lager.
+  await expect(page.getByText(SEED_DEPOT)).toBeVisible();
+
+  // Neues Lager anlegen (eindeutiger Name, damit parallele Läufe nicht kollidieren).
+  const name = `E2E-Lager ${Date.now()}`;
+  await page.getByPlaceholder(/Neues Lager/).fill(name);
   await page.getByRole('button', { name: 'Anlegen' }).click();
 
-  await expect(page.getByText('Stamm Grauer Reiter')).toBeVisible();
+  await expect(page.getByText(name)).toBeVisible();
 });

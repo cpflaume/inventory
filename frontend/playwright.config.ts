@@ -1,13 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// E2E gegen das Frontend; die API wird je Test im Browser gemockt (page.route),
-// analog zu den FE-Repos provisioncalculator-fe / announcement-service-ui — kein
-// Backend nötig, dadurch schnell und deterministisch.
+// E2E gegen das ECHTE Backend (Spring Boot + Postgres, mit Seed-Testdaten).
+// Der Playwright-webServer startet nur das Frontend (Vite-Dev), das seine
+// /api-Aufrufe an das laufende Backend (localhost:8080) proxied.
+// Voraussetzung: das Backend läuft bereits (lokal: `docker compose up`; CI:
+// eigener Schritt startet die gebaute Jar gegen einen Postgres-Service-Container).
 const PORT = 5174;
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // Ein gemeinsames Backend → Tests seriell, damit sie sich nicht ins Gehege kommen.
+  workers: 1,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
@@ -21,10 +25,11 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--no-sandbox'],
-          // Optionaler Escape-Hatch: in vorbereiteten Umgebungen (Chromium bereits
-          // installiert) auf das vorhandene Binary zeigen. In CI ungesetzt → Playwright
-          // nutzt den per `playwright install` geholten Browser.
+          // --no-proxy-server: direkt gegen localhost (in Sandbox-Umgebungen mit
+          // System-Proxy nötig, in CI ein No-Op).
+          args: ['--no-sandbox', '--no-proxy-server'],
+          // Escape-Hatch: in vorbereiteten Umgebungen auf ein vorhandenes Chromium
+          // zeigen. In CI ungesetzt → Playwright nutzt den installierten Browser.
           ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
             ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
             : {}),

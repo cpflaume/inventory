@@ -65,7 +65,9 @@ cd frontend && npm install && npm run dev
 ```bash
 cd backend  && ./gradlew test        # JUnit + Testcontainers-Postgres (braucht Docker)
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
-cd frontend && npm run e2e           # Playwright-E2E (API im Browser gemockt), ein Test je Haupt-Use-Case
+# Playwright-E2E gegen das echte Backend (ein Test je Haupt-Use-Case). Backend muss laufen:
+docker compose up -d                 # Postgres + Backend (mit Seed) + Frontend
+cd frontend && npm run e2e
 ```
 
 ## Deployment

@@ -1,22 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { emptyState, mockApi } from './mocks';
+import { openSeededDepot } from './helpers';
 
-// Use-Case: Beipackzettel einer Kiste als Druckansicht öffnen.
+// Use-Case: Beipackzettel einer Kiste drucken (Druckansicht öffnet in neuem Tab).
 test('Beipackzettel drucken', async ({ page }) => {
-  const state = emptyState();
-  state.contents = {
-    b1: {
-      locationId: 'b1',
-      label: 'Kiste 1 · Dach',
-      items: [{ id: 'i2', name: 'Jurtendach', quantity: 1, conditionFlag: 'GREEN', note: 'oben lagern' }],
-    },
-  };
-  await mockApi(page, state);
+  await openSeededDepot(page);
 
-  await page.goto('/lager/d1/druck/kiste/b1');
+  // Kiste öffnen und den Beipackzettel-Link (target=_blank) folgen.
+  await page.getByRole('button', { name: /Kiste 1 · Jurtendach/ }).click();
+  const [printPage] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.getByRole('link', { name: /Beipackzettel drucken/ }).click(),
+  ]);
 
-  await expect(page.getByRole('heading', { name: /Kiste 1 · Dach/ })).toBeVisible();
-  await expect(page.getByText('Beipackzettel')).toBeVisible();
-  await expect(page.getByText('Jurtendach')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Drucken/ })).toBeVisible();
+  await expect(printPage.getByRole('heading', { name: /Kiste 1 · Jurtendach/ })).toBeVisible();
+  await expect(printPage.getByText('Beipackzettel')).toBeVisible();
+  await expect(printPage.getByText('Jurtendach', { exact: true })).toBeVisible();
+  await expect(printPage.getByRole('button', { name: /Drucken/ })).toBeVisible();
 });

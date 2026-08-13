@@ -1,15 +1,17 @@
 import { expect, test } from '@playwright/test';
-import { emptyState, mockApi } from './mocks';
+import { openSeededDepot } from './helpers';
 
-// Use-Case: Material hinzufügen und in der Liste sehen.
+// Use-Case: Material ansehen (geseedet) und ein neues Teil hinzufügen.
 test('Material hinzufügen', async ({ page }) => {
-  await mockApi(page, emptyState());
+  await openSeededDepot(page);
+  await page.getByRole('link', { name: /Material/ }).click();
 
-  await page.goto('/lager/d1/material');
-  await expect(page.getByRole('heading', { name: /Material/ })).toBeVisible();
+  // Aus dem Seed vorhandenes Material.
+  await expect(page.getByText('Hammer')).toBeVisible();
 
-  await page.getByPlaceholder(/Was\?/).fill('Hammer');
+  const name = `Zelthering ${Date.now()}`;
+  await page.getByPlaceholder(/Was\?/).fill(name);
   await page.getByRole('button', { name: '+ Hinzufügen' }).click();
 
-  await expect(page.getByText('Hammer')).toBeVisible();
+  await expect(page.getByText(name)).toBeVisible();
 });
