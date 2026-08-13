@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-moos-50 text-moos-900 font-sans;
+  /* Zarte Natur-Textur im Hintergrund. */
+  background-image: radial-gradient(theme('colors.moos.100') 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Druckansichten: nur der markierte Bereich, schwarz-weiß-tauglich. */
+@media print {
+  body {
+    @apply bg-white text-black;
+    background-image: none;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

@@ -1,0 +1,10 @@
+# Produktionsprofil. Datenbank-Credentials und CORS kommen aus der Umgebung,
+# die die GitOps-Plattform (service_database + service.env) injiziert.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  # In Produktion keine Demo-Daten anlegen.
+  seed-demo: false

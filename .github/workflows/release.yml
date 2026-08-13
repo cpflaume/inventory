@@ -1,0 +1,76 @@
+name: Release
+
+# Auf ein veröffentlichtes GitHub-Release: beide Docker-Images MULTI-ARCH
+# (amd64 + arm64 für Oracle Cloud / Ampere) nach GHCR pushen und anschließend
+# das GitOps-Repo (Deploy) je Service per repository_dispatch anstoßen.
+on:
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_API: ghcr.io/${{ github.repository_owner }}/inventory-api
+  IMAGE_FE: ghcr.io/${{ github.repository_owner }}/inventory-fe
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  api:
+    name: Build & push inventory-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push (amd64 + arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_API }}:${{ github.event.release.tag_name }}
+
+  fe:
+    name: Build & push inventory-fe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push (amd64 + arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_FE }}:${{ github.event.release.tag_name }}
+
+  deploy:
+    name: Trigger GitOps deploy
+    needs: [api, fe]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [inventory-api, inventory-fe]
+    steps:
+      - name: Dispatch to gitops (${{ matrix.service }})
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITOPS_DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/cpflaume/copf-demo-gitops/dispatches \
+            -d '{"event_type":"deploy","client_payload":{"service":"${{ matrix.service }}","environment":"production","version":"${{ github.event.release.tag_name }}"}}'
