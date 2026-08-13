@@ -7,7 +7,7 @@
 # Build-Plattform ($BUILDPLATFORM) – Gradle wird also nur einmal (amd64)
 # ausgeführt und NICHT unter QEMU-Emulation je Ziel-Arch. Nur der triviale
 # Runtime-Stage (Jar kopieren + User anlegen) wird pro Ziel-Arch gebaut.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 # Wrapper + Build-Metadaten zuerst → Layer-Caching für Dependencies.
 COPY gradlew settings.gradle build.gradle ./
@@ -20,7 +20,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon bootJar
 
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:25-jre AS runtime
 WORKDIR /app
 # Non-root laufen lassen.
 RUN groupadd --system app && useradd --system --gid app --home /app app
