@@ -1,15 +1,24 @@
 # syntax=docker/dockerfile:1
 # Multi-stage, multi-arch-fähig (amd64 + arm64 für Oracle Cloud / Ampere).
 # Beide Base-Images sind offizielle Multi-Arch-Manifeste.
-
-FROM eclipse-temurin:21-jdk AS build
+#
+# Wichtig: Das Spring-Boot-Fat-Jar ist reines JVM-Bytecode und damit
+# architektur-unabhängig. Der Build-Stage läuft deshalb IMMER nativ auf der
+# Build-Plattform ($BUILDPLATFORM) – Gradle wird also nur einmal (amd64)
+# ausgeführt und NICHT unter QEMU-Emulation je Ziel-Arch. Nur der triviale
+# Runtime-Stage (Jar kopieren + User anlegen) wird pro Ziel-Arch gebaut.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 # Wrapper + Build-Metadaten zuerst → Layer-Caching für Dependencies.
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
-RUN ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
+# BuildKit-Cache-Mount für den Gradle-Cache: Dependencies werden über Builds
+# hinweg wiederverwendet statt jedes Mal neu geladen.
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
 COPY src ./src
-RUN ./gradlew --no-daemon clean bootJar
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon bootJar
 
 FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app
