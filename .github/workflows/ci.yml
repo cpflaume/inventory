@@ -5,6 +5,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      record_all_videos:
+        description: "E2E: Videos ALLER Tests aufzeichnen (Default: nur fehlgeschlagene)"
+        type: boolean
+        default: false
 
 jobs:
   backend:
@@ -148,13 +154,19 @@ jobs:
 
       - name: Run E2E
         working-directory: frontend
+        env:
+          # Standard: nur Videos fehlgeschlagener Tests behalten. Per manuellem
+          # workflow_dispatch mit record_all_videos=true → alle Videos aufzeichnen.
+          E2E_VIDEO: ${{ (github.event_name == 'workflow_dispatch' && inputs.record_all_videos) && 'all' || '' }}
         run: npm run e2e
 
-      - name: Upload Playwright report
+      - name: Upload E2E videos
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: frontend/playwright-report/
+          name: e2e-videos
+          # Playwright legt Videos/Traces unter test-results/ ab. Bei Default-Läufen
+          # liegen dort nur die Videos fehlgeschlagener Tests; grüner Lauf → leer.
+          path: frontend/test-results/
           retention-days: 7
           if-no-files-found: ignore
