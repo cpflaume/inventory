@@ -19,7 +19,7 @@ jobs:
     # Echte Postgres als Service-Container (robuster als Testcontainers auf dem Runner).
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: jurtenburg
           POSTGRES_USER: jurtenburg
@@ -41,10 +41,10 @@ jobs:
       SPRING_DATASOURCE_USERNAME: jurtenburg
       SPRING_DATASOURCE_PASSWORD: jurtenburg
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -64,12 +64,12 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: jurtenburg
           POSTGRES_USER: jurtenburg
@@ -106,10 +106,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -138,9 +138,9 @@ jobs:
           curl -sf http://localhost:8080/actuator/health || (echo "Backend nicht gestartet:"; cat /tmp/backend.log; exit 1)
 
       - name: Set up Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload E2E videos
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-videos
           # Playwright legt Videos/Traces unter test-results/ ab. Bei Default-Läufen
