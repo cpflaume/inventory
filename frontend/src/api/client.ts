@@ -99,9 +99,9 @@ export interface DefectInput {
 
 export const api = {
   // ---- Auth ----
-  register: (body: { username: string; email?: string; displayName?: string; password: string }) =>
+  register: (body: { email: string; displayName?: string; password: string }) =>
     http<UserSummary>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
-  login: (body: { username: string; password: string }) =>
+  login: (body: { email: string; password: string }) =>
     http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => http<MeResponse>('/auth/me'),
 

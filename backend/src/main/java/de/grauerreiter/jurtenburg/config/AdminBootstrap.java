@@ -31,6 +31,7 @@ public class AdminBootstrap {
                 return;
             }
             AppUser admin = new AppUser(username, AuthProvider.LOCAL);
+            admin.setEmail(username);
             admin.setDisplayName("Administrator");
             admin.setPasswordHash(encoder.encode(password));
             admin.setSystemRole(SystemRole.ADMIN);

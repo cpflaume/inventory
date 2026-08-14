@@ -6,7 +6,7 @@ import { Button, Card } from '../components/ui';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -16,7 +16,7 @@ export default function LoginPage() {
     setError('');
     setBusy(true);
     try {
-      await login(username, password);
+      await login(email, password);
       navigate('/');
     } catch (err) {
       setError((err as Error).message);
@@ -36,9 +36,10 @@ export default function LoginPage() {
         <form className="space-y-3" onSubmit={submit}>
           <input
             autoFocus
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Benutzername"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-Mail"
             className="w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500"
           />
           <input
@@ -49,7 +50,7 @@ export default function LoginPage() {
             className="w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={busy || !username || !password}>
+          <Button type="submit" disabled={busy || !email || !password}>
             Anmelden
           </Button>
         </form>

@@ -34,17 +34,19 @@ class AuthApiTest extends AbstractIntegrationTest {
         MockMvc admin = adminMockMvc(context);
         MockMvc anon = anonymousMockMvc(context);
 
-        // 1) Registrierung → 201, PENDING.
+        // 1) Registrierung → 201, PENDING. Die E-Mail ist zugleich der Benutzername.
         String userBody = anon.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"displayName\":\"Erika\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status", is("PENDING")))
+                .andExpect(jsonPath("$.username", is("erika@example.org")))
+                .andExpect(jsonPath("$.email", is("erika@example.org")))
                 .andReturn().getResponse().getContentAsString();
         String erikaId = id(userBody, "id");
 
         // 2) Login vor Freigabe → 401.
         anon.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isUnauthorized());
 
         // 3) Admin gibt frei.
@@ -54,7 +56,7 @@ class AuthApiTest extends AbstractIntegrationTest {
 
         // 4) Login → 200 + Token.
         String loginBody = anon.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         String token = id(loginBody, "token");
@@ -89,7 +91,7 @@ class AuthApiTest extends AbstractIntegrationTest {
         // 9) /me zeigt das Lager mit Rolle EDITOR.
         anon.perform(get("/api/auth/me").header("Authorization", bearer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.username", is("erika")))
+                .andExpect(jsonPath("$.user.username", is("erika@example.org")))
                 .andExpect(jsonPath("$.depots[0].role", is("EDITOR")));
 
         // 10) Kein Admin-Zugriff für normalen Benutzer (403).

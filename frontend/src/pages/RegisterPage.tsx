@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { Button, Card } from '../components/ui';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ username: '', email: '', displayName: '', password: '' });
+  const [form, setForm] = useState({ email: '', displayName: '', password: '' });
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -15,8 +15,7 @@ export default function RegisterPage() {
     setBusy(true);
     try {
       await api.register({
-        username: form.username,
-        email: form.email || undefined,
+        email: form.email,
         displayName: form.displayName || undefined,
         password: form.password,
       });
@@ -50,22 +49,16 @@ export default function RegisterPage() {
           <form className="space-y-3" onSubmit={submit}>
             <input
               autoFocus
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              placeholder="Benutzername"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="E-Mail"
               className="w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500"
             />
             <input
               value={form.displayName}
               onChange={(e) => setForm({ ...form, displayName: e.target.value })}
               placeholder="Anzeigename (optional)"
-              className="w-full rounded-xl border border-moos-200 px-4 py-2"
-            />
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="E-Mail (optional)"
               className="w-full rounded-xl border border-moos-200 px-4 py-2"
             />
             <input
@@ -76,7 +69,7 @@ export default function RegisterPage() {
               className="w-full rounded-xl border border-moos-200 px-4 py-2"
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="submit" disabled={busy || !form.username || form.password.length < 8}>
+            <Button type="submit" disabled={busy || !form.email || form.password.length < 8}>
               Konto anlegen
             </Button>
           </form>

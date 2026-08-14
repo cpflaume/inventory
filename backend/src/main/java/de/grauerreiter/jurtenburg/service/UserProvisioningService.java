@@ -42,8 +42,11 @@ public class UserProvisioningService {
     @Transactional
     public AppUser provisionExternalUser(AuthProvider provider, String externalId, String username,
             String email, String displayName, Collection<String> groupNames, boolean autoCreateGroups) {
+        // Der Benutzername ist die E-Mail-Adresse (Login-Identität). Fehlt sie im Claim,
+        // fällt auf den vom IdP gelieferten Namen zurück.
+        String usernameBase = (email == null || email.isBlank()) ? username : email;
         AppUser user = users.findByProviderAndExternalId(provider, externalId).orElseGet(() -> {
-            AppUser created = new AppUser(uniqueUsername(username), provider);
+            AppUser created = new AppUser(uniqueUsername(usernameBase), provider);
             created.setExternalId(externalId);
             // Extern authentifizierte Identitäten gelten als vom IdP freigegeben.
             created.setStatus(UserStatus.ACTIVE);
