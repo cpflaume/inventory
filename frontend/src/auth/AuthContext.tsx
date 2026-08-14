@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     loadMe();
     return () => setUnauthorizedHandler(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (username: string, password: string) => {
