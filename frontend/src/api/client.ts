@@ -141,6 +141,10 @@ export const api = {
   listItems: (d: string) => http<Item[]>(`/depots/${d}/items`),
   createItem: (d: string, body: ItemInput) =>
     http<Item>(`/depots/${d}/items`, { method: 'POST', body: JSON.stringify(body) }),
+  updateItem: (d: string, i: string, body: ItemInput) =>
+    http<Item>(`/depots/${d}/items/${i}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteItem: (d: string, i: string) =>
+    http<void>(`/depots/${d}/items/${i}`, { method: 'DELETE' }),
 
   listKits: (d: string) => http<Kit[]>(`/depots/${d}/kits`),
   getKit: (d: string, k: string) => http<Kit>(`/depots/${d}/kits/${k}`),

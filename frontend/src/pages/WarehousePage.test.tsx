@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import WarehousePage from './WarehousePage';
+import { AuthProvider } from '../auth/AuthContext';
 import type { WarehouseView } from '../api/types';
 
 const warehouse: WarehouseView = {
@@ -26,17 +27,23 @@ vi.mock('../api/client', () => ({
     warehouse: () => Promise.resolve(warehouse),
     getDepot: () => Promise.resolve({ id: 'd1', name: 'Test', createdAt: '' }),
   },
+  getToken: () => null,
+  setToken: () => {},
+  clearToken: () => {},
+  setUnauthorizedHandler: () => {},
 }));
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/lager/d1']}>
-        <Routes>
-          <Route path="/lager/:depotId" element={<WarehousePage />} />
-        </Routes>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/lager/d1']}>
+          <Routes>
+            <Route path="/lager/:depotId" element={<WarehousePage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
     </QueryClientProvider>,
   );
 }
