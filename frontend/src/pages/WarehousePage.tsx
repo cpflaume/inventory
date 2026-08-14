@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import type { BoxView, CellView, Item, ShelfView } from '../api/types';
 import { AppVersion, Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
 import { ItemDialog, ItemRow } from '../components/items';
+import { ChestArt, EmptyCellArt, woodStyle } from '../components/warehouseArt';
 import { LocationDrawer } from '../components/LocationDrawer';
 import type { LocationTarget } from '../components/locationTarget';
 import { useAuth } from '../auth/AuthContext';
@@ -143,53 +144,101 @@ function Shelf({
   const byCell = new Map<string, CellView>();
   shelf.cells.forEach((c) => byCell.set(`${c.row}-${c.col}`, c));
 
+  // Stabiler Seed je Regal, damit die Fund-Grafiken pro Regal variieren.
+  const shelfSeed = [...shelf.id].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between bg-gradient-to-r from-moos-700 to-moos-600 px-4 py-2 text-white">
-        <span className="font-semibold">🪵 {shelf.label}</span>
-        <span className="text-xs text-moos-100">
-          {shelf.gridRows} × {shelf.gridCols} Fächer
-        </span>
-      </div>
+    <div className="relative">
+      {/* Holzrahmen des Regals (stehende Maserung = Pfosten). */}
       <div
-        className="grid gap-2 bg-zelt-100 p-3"
-        style={{ gridTemplateColumns: `repeat(${shelf.gridCols}, minmax(0, 1fr))` }}
+        className="overflow-hidden rounded-2xl p-2 shadow-lg ring-1 ring-holz-900/40"
+        style={woodStyle({ dir: 'v', seed: 3, from: '#b3823f', to: '#6f4520' })}
       >
-        {Array.from({ length: shelf.gridRows }).flatMap((_, r) =>
-          Array.from({ length: shelf.gridCols }).map((__, c) => {
-            const cell = byCell.get(`${r}-${c}`);
-            if (cell?.box) {
+        {/* Geschnitztes Namensschild. */}
+        <div className="mb-2 flex items-center justify-between rounded-lg border border-holz-900/40 bg-holz-900/25 px-3 py-1.5">
+          <span className="font-semibold text-holz-50 [text-shadow:0_1px_1px_rgba(0,0,0,.55)]">
+            🪵 {shelf.label}
+          </span>
+          <span className="rounded-full bg-holz-900/40 px-2 py-0.5 text-xs text-holz-100">
+            {shelf.gridRows} × {shelf.gridCols} Fächer
+          </span>
+        </div>
+
+        {/* Innenraum mit liegender Maserung (Fachböden). */}
+        <div
+          className="grid gap-2 rounded-lg p-2 shadow-inner"
+          style={{
+            gridTemplateColumns: `repeat(${shelf.gridCols}, minmax(0, 1fr))`,
+            ...woodStyle({ dir: 'h', seed: 11, from: '#7a4e26', to: '#4a2c14' }),
+          }}
+        >
+          {Array.from({ length: shelf.gridRows }).flatMap((_, r) =>
+            Array.from({ length: shelf.gridCols }).map((__, c) => {
+              const cell = byCell.get(`${r}-${c}`);
+              const cellSeed = shelfSeed + r * 5 + c * 3;
+              if (cell?.box) {
+                return (
+                  <BoxTile
+                    key={`${r}-${c}`}
+                    box={cell.box}
+                    onClick={() => onOpenBox(cell.box!)}
+                    compact
+                  />
+                );
+              }
+              // Leere und lose-belegte Fächer sind anklickbar (Detail/Hinzufügen).
+              const hasLoose = cell && cell.looseItems.length > 0;
               return (
-                <div key={`${r}-${c}`} className="min-h-[64px] rounded-lg border-2 border-zelt-300/70 bg-white/60 p-1">
-                  <BoxTile box={cell.box} onClick={() => onOpenBox(cell.box!)} compact />
-                </div>
+                <button
+                  key={`${r}-${c}`}
+                  type="button"
+                  onClick={() => onOpenCell(r, c)}
+                  className="group relative min-h-[72px] overflow-hidden rounded-md text-left transition hover:brightness-110 hover:ring-2 hover:ring-lagerfeuer-400"
+                  style={{
+                    ...woodStyle({ dir: 'h', seed: cellSeed, from: '#6f4520', to: '#38210f' }),
+                    boxShadow:
+                      'inset 0 3px 7px rgba(0,0,0,.6), inset 0 -4px 6px rgba(0,0,0,.4), inset 3px 0 5px rgba(0,0,0,.35), inset -3px 0 5px rgba(0,0,0,.35)',
+                  }}
+                  title={`Fach ${r + 1}/${c + 1}`}
+                >
+                  {hasLoose ? (
+                    <ul className="relative z-10 m-1 space-y-0.5 rounded bg-white/85 p-1 text-xs text-moos-800 shadow-sm ring-1 ring-black/10">
+                      {cell!.looseItems.map((it) => (
+                        <li key={it.id} className="flex items-center gap-1">
+                          <ConditionDot flag={it.conditionFlag} />
+                          <span className="truncate">{it.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyCellArt seed={cellSeed} />
+                  )}
+                </button>
               );
-            }
-            // Leere und lose-belegte Fächer sind anklickbar (Detail/Hinzufügen).
-            return (
-              <button
-                key={`${r}-${c}`}
-                type="button"
-                onClick={() => onOpenCell(r, c)}
-                className="min-h-[64px] rounded-lg border-2 border-zelt-300/70 bg-white/60 p-1 text-left transition hover:border-moos-400 hover:bg-white"
-                title={`Fach ${r + 1}/${c + 1}`}
-              >
-                {cell && cell.looseItems.length > 0 && (
-                  <ul className="space-y-0.5 p-1 text-xs text-moos-700">
-                    {cell.looseItems.map((it) => (
-                      <li key={it.id} className="flex items-center gap-1">
-                        <ConditionDot flag={it.conditionFlag} />
-                        <span className="truncate">{it.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </button>
-            );
-          }),
-        )}
+            }),
+          )}
+        </div>
       </div>
-    </Card>
+
+      {/* Füße unter dem Regal. */}
+      <div className="mx-4 flex justify-between">
+        <ShelfFoot />
+        <ShelfFoot />
+      </div>
+    </div>
+  );
+}
+
+/** Ein Regalfuß: kurzes Holzbein mit Bodenschatten. */
+function ShelfFoot() {
+  return (
+    <div className="relative">
+      <div
+        className="h-4 w-10 rounded-b-md ring-1 ring-holz-900/50"
+        style={woodStyle({ dir: 'v', seed: 5, from: '#8a5a2b', to: '#432611' })}
+      />
+      <div className="mx-auto h-1 w-12 rounded-full bg-black/25 blur-[1px]" />
+    </div>
   );
 }
 
@@ -202,19 +251,25 @@ function BoxTile({
   onClick: () => void;
   compact?: boolean;
 }) {
+  // Stabiler Seed je Kiste für die Tonvariation der Truhe.
+  const seed = [...box.id].reduce((a, ch) => a + ch.charCodeAt(0), 0);
   return (
     <button
       onClick={onClick}
-      className={`group flex w-full flex-col items-start rounded-lg bg-lagerfeuer-400/90 text-left text-white shadow-sm transition hover:bg-lagerfeuer-500 ${
-        compact ? 'h-full p-2' : 'w-40 p-3'
+      className={`group relative flex flex-col overflow-hidden rounded-md text-left text-white shadow-md ring-1 ring-holz-900/50 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-lagerfeuer-400 ${
+        compact ? 'h-full min-h-[72px] w-full p-1.5' : 'h-28 w-40 p-2'
       }`}
       title={box.label}
     >
-      <span className="text-lg leading-none">📦</span>
-      {/* Bezeichnung immer sichtbar. */}
-      <span className="mt-1 line-clamp-2 text-xs font-semibold">{box.label}</span>
-      <span className="mt-auto pt-1 text-[11px] text-white/80">
-        {box.itemCount} Teile{box.openDefects > 0 && ` · 🐛${box.openDefects}`}
+      <ChestArt seed={seed} />
+      {/* Bezeichnung immer sichtbar – als „angenageltes" Schild auf dem Deckel. */}
+      <span className="relative z-10 flex h-full flex-col">
+        <span className="line-clamp-2 rounded bg-holz-900/75 px-1.5 py-0.5 text-[11px] font-semibold leading-tight text-holz-50 shadow-sm ring-1 ring-holz-900/40">
+          {box.label}
+        </span>
+        <span className="mt-auto self-start rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white/90">
+          {box.itemCount} Teile{box.openDefects > 0 && ` · 🐛${box.openDefects}`}
+        </span>
       </span>
     </button>
   );
