@@ -118,7 +118,7 @@ public class DemoDataSeeder {
                     "Grauer Reiter Team", "Materialwarte des Stamms."));
             groupDepotAccess.save(new GroupDepotAccess(team.getId(), depotId, DepotRole.EDITOR));
 
-            AppUser max = new AppUser("max", AuthProvider.LOCAL);
+            AppUser max = new AppUser("max@example.org", AuthProvider.LOCAL);
             max.setDisplayName("Max Mustermann");
             max.setEmail("max@example.org");
             max.setPasswordHash(passwordEncoder.encode("max12345"));
@@ -126,8 +126,9 @@ public class DemoDataSeeder {
             max.getGroups().add(team);
             appUsers.save(max);
 
-            AppUser neu = new AppUser("neu", AuthProvider.LOCAL);
+            AppUser neu = new AppUser("neu@example.org", AuthProvider.LOCAL);
             neu.setDisplayName("Neu Angemeldet");
+            neu.setEmail("neu@example.org");
             neu.setPasswordHash(passwordEncoder.encode("neu12345"));
             // bleibt PENDING → Demo für die Admin-Freigabe
             appUsers.save(neu);

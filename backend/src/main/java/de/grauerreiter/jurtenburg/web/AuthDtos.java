@@ -23,13 +23,12 @@ public final class AuthDtos {
     // ---- Auth ----
 
     public record RegisterRequest(
-            @NotBlank @Size(min = 3, max = 64) String username,
-            @Email String email,
+            @NotBlank @Email @Size(max = 254) String email,
             String displayName,
             @NotBlank @Size(min = 8, max = 100) String password) {
     }
 
-    public record LoginRequest(@NotBlank String username, @NotBlank String password) {
+    public record LoginRequest(@NotBlank String email, @NotBlank String password) {
     }
 
     public record AuthResponse(String token, UserSummary user) {

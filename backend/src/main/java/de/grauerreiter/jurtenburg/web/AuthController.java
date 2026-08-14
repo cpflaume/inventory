@@ -51,7 +51,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest req) {
-        String token = authService.login(req.username(), req.password());
+        String token = authService.login(req.email(), req.password());
         AppUser user = authService.byId(jwtService.userId(jwtService.parse(token)));
         return new AuthResponse(token, UserSummary.of(user));
     }

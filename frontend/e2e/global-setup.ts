@@ -10,7 +10,7 @@ export default async function globalSetup(config: FullConfig) {
   });
   const page = await browser.newPage({ baseURL });
   await page.goto('/login');
-  await page.getByPlaceholder('Benutzername').fill(process.env.E2E_ADMIN_USER || 'admin');
+  await page.getByPlaceholder('E-Mail').fill(process.env.E2E_ADMIN_USER || 'admin@jurtenburg.local');
   await page.getByPlaceholder('Passwort').fill(process.env.E2E_ADMIN_PASSWORD || 'admin12345');
   await page.getByRole('button', { name: 'Anmelden' }).click();
   // Erfolgreich, sobald die Lager-Übersicht erscheint.

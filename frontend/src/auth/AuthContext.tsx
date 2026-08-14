@@ -7,7 +7,7 @@ interface AuthState {
   depots: DepotAccess[];
   loading: boolean;
   isAdmin: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const res = await api.login({ username, password });
+  const login = async (email: string, password: string) => {
+    const res = await api.login({ email, password });
     setToken(res.token);
     await loadMe();
   };

@@ -46,5 +46,6 @@ app:
     issuer: jurtenburg
   admin:
     # Bootstrap-Admin: wird beim Start angelegt, falls noch kein Admin existiert.
-    username: ${APP_ADMIN_USERNAME:admin}
+    # Der Benutzername ist zugleich die Login-E-Mail.
+    username: ${APP_ADMIN_USERNAME:admin@jurtenburg.local}
     password: ${APP_ADMIN_PASSWORD:admin12345}
