@@ -2,13 +2,20 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { BoxView, CellView, ShelfView } from '../api/types';
-import { Button, Card, ConditionDot, EmptyState } from '../components/ui';
+import type { BoxView, CellView, Item, ShelfView } from '../api/types';
+import { Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
+import { ItemDialog, ItemRow } from '../components/items';
+import { LocationDrawer } from '../components/LocationDrawer';
+import type { LocationTarget } from '../components/locationTarget';
+import { useAuth } from '../auth/AuthContext';
 
 export default function WarehousePage() {
   const { depotId = '' } = useParams();
   const qc = useQueryClient();
-  const [openBox, setOpenBox] = useState<BoxView | null>(null);
+  const { canEdit: canEditFn } = useAuth();
+  const canEdit = canEditFn(depotId);
+  const [openTarget, setOpenTarget] = useState<LocationTarget | null>(null);
+  const [detailItem, setDetailItem] = useState<Item | null>(null);
   const [adding, setAdding] = useState<null | 'shelf' | 'box'>(null);
 
   const { data, isLoading } = useQuery({
@@ -18,17 +25,23 @@ export default function WarehousePage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['warehouse', depotId] });
 
+  const openBox = (box: BoxView) => setOpenTarget({ kind: 'box', locationId: box.id, label: box.label });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-moos-800">🏕️ Virtuelles Lager</h1>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => setAdding('shelf')}>
-            + Regal
-          </Button>
-          <Button variant="ghost" onClick={() => setAdding('box')}>
-            + Kiste
-          </Button>
+          {canEdit && (
+            <>
+              <Button variant="ghost" onClick={() => setAdding('shelf')}>
+                + Regal
+              </Button>
+              <Button variant="ghost" onClick={() => setAdding('box')}>
+                + Kiste
+              </Button>
+            </>
+          )}
           <Link to={`/lager/${depotId}/druck/bestand`} target="_blank">
             <Button variant="fire">🖨️ Bestand</Button>
           </Link>
@@ -46,7 +59,14 @@ export default function WarehousePage() {
       )}
 
       {data?.shelves.map((shelf) => (
-        <Shelf key={shelf.id} shelf={shelf} onOpenBox={setOpenBox} />
+        <Shelf
+          key={shelf.id}
+          shelf={shelf}
+          onOpenBox={openBox}
+          onOpenCell={(row, col) =>
+            setOpenTarget({ kind: 'cell', shelfId: shelf.id, shelfLabel: shelf.label, row, col })
+          }
+        />
       ))}
 
       {data && data.freestandingBoxes.length > 0 && (
@@ -56,7 +76,7 @@ export default function WarehousePage() {
           </h2>
           <div className="flex flex-wrap gap-3">
             {data.freestandingBoxes.map((box) => (
-              <BoxTile key={box.id} box={box} onClick={() => setOpenBox(box)} />
+              <BoxTile key={box.id} box={box} onClick={() => openBox(box)} />
             ))}
           </div>
         </section>
@@ -69,11 +89,7 @@ export default function WarehousePage() {
           </h2>
           <Card className="divide-y divide-moos-50 p-2">
             {data.unassignedItems.map((it) => (
-              <div key={it.id} className="flex items-center gap-2 px-2 py-1.5 text-sm">
-                <ConditionDot flag={it.conditionFlag} />
-                <span className="flex-1">{it.name}</span>
-                <span className="text-moos-400">×{it.quantity}</span>
-              </div>
+              <ItemRow key={it.id} item={it} onClick={() => setDetailItem(it)} />
             ))}
           </Card>
         </section>
@@ -92,14 +108,36 @@ export default function WarehousePage() {
         />
       )}
 
-      {openBox && (
-        <BoxDrawer depotId={depotId} box={openBox} onClose={() => setOpenBox(null)} />
+      {openTarget && (
+        <LocationDrawer
+          depotId={depotId}
+          target={openTarget}
+          canEdit={canEdit}
+          onClose={() => setOpenTarget(null)}
+        />
+      )}
+
+      {detailItem && (
+        <ItemDialog
+          depotId={depotId}
+          item={detailItem}
+          canEdit={canEdit}
+          onClose={() => setDetailItem(null)}
+        />
       )}
     </div>
   );
 }
 
-function Shelf({ shelf, onOpenBox }: { shelf: ShelfView; onOpenBox: (b: BoxView) => void }) {
+function Shelf({
+  shelf,
+  onOpenBox,
+  onOpenCell,
+}: {
+  shelf: ShelfView;
+  onOpenBox: (b: BoxView) => void;
+  onOpenCell: (row: number, col: number) => void;
+}) {
   const byCell = new Map<string, CellView>();
   shelf.cells.forEach((c) => byCell.set(`${c.row}-${c.col}`, c));
 
@@ -118,12 +156,22 @@ function Shelf({ shelf, onOpenBox }: { shelf: ShelfView; onOpenBox: (b: BoxView)
         {Array.from({ length: shelf.gridRows }).flatMap((_, r) =>
           Array.from({ length: shelf.gridCols }).map((__, c) => {
             const cell = byCell.get(`${r}-${c}`);
+            if (cell?.box) {
+              return (
+                <div key={`${r}-${c}`} className="min-h-[64px] rounded-lg border-2 border-zelt-300/70 bg-white/60 p-1">
+                  <BoxTile box={cell.box} onClick={() => onOpenBox(cell.box!)} compact />
+                </div>
+              );
+            }
+            // Leere und lose-belegte Fächer sind anklickbar (Detail/Hinzufügen).
             return (
-              <div
+              <button
                 key={`${r}-${c}`}
-                className="min-h-[64px] rounded-lg border-2 border-zelt-300/70 bg-white/60 p-1"
+                type="button"
+                onClick={() => onOpenCell(r, c)}
+                className="min-h-[64px] rounded-lg border-2 border-zelt-300/70 bg-white/60 p-1 text-left transition hover:border-moos-400 hover:bg-white"
+                title={`Fach ${r + 1}/${c + 1}`}
               >
-                {cell?.box && <BoxTile box={cell.box} onClick={() => onOpenBox(cell.box!)} compact />}
                 {cell && cell.looseItems.length > 0 && (
                   <ul className="space-y-0.5 p-1 text-xs text-moos-700">
                     {cell.looseItems.map((it) => (
@@ -134,7 +182,7 @@ function Shelf({ shelf, onOpenBox }: { shelf: ShelfView; onOpenBox: (b: BoxView)
                     ))}
                   </ul>
                 )}
-              </div>
+              </button>
             );
           }),
         )}
@@ -167,49 +215,6 @@ function BoxTile({
         {box.itemCount} Teile{box.openDefects > 0 && ` · 🐛${box.openDefects}`}
       </span>
     </button>
-  );
-}
-
-function BoxDrawer({
-  depotId,
-  box,
-  onClose,
-}: {
-  depotId: string;
-  box: BoxView;
-  onClose: () => void;
-}) {
-  const { data } = useQuery({
-    queryKey: ['box-contents', depotId, box.id],
-    queryFn: () => api.boxContents(depotId, box.id),
-  });
-  return (
-    <div className="no-print fixed inset-0 z-20 flex items-end bg-black/30 sm:items-center sm:justify-center" onClick={onClose}>
-      <div
-        className="w-full rounded-t-2xl bg-white p-5 sm:max-w-md sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-bold text-moos-800">📦 {box.label}</h3>
-          <button onClick={onClose} className="text-moos-400" aria-label="Schließen">
-            ✕
-          </button>
-        </div>
-        {data && data.items.length === 0 && <p className="text-sm text-moos-400">Kiste ist leer.</p>}
-        <ul className="max-h-72 space-y-1 overflow-auto">
-          {data?.items.map((it) => (
-            <li key={it.id} className="flex items-center gap-2 rounded-lg bg-moos-50 px-3 py-2 text-sm">
-              <ConditionDot flag={it.conditionFlag} />
-              <span className="flex-1">{it.name}</span>
-              <span className="text-moos-400">×{it.quantity}</span>
-            </li>
-          ))}
-        </ul>
-        <Link to={`/lager/${depotId}/druck/kiste/${box.id}`} target="_blank" className="mt-4 block">
-          <Button variant="fire">🖨️ Beipackzettel drucken</Button>
-        </Link>
-      </div>
-    </div>
   );
 }
 
@@ -251,82 +256,78 @@ function AddLocationDialog({
 
   const chosenShelf = shelves.find((s) => s.id === shelfId);
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="ghost" onClick={onClose}>
+        Abbrechen
+      </Button>
+      <Button
+        onClick={() => save.mutate()}
+        disabled={!label.trim() || save.isPending || (mode === 'box' && !!shelfId && !cell)}
+      >
+        Speichern
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="no-print fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <Card className="p-5">
-          <div className="space-y-4">
-          <h3 className="font-bold text-moos-800">
-            {mode === 'shelf' ? '🪵 Neues Regal' : '📦 Neue Kiste'}
-          </h3>
-          <input
-            autoFocus
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder={mode === 'shelf' ? 'Regal A' : 'Kiste 5 · Heringe'}
-            className="w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500"
-          />
+    <Modal title={mode === 'shelf' ? '🪵 Neues Regal' : '📦 Neue Kiste'} onClose={onClose} footer={footer}>
+      <div className="space-y-4">
+        <input
+          autoFocus
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={mode === 'shelf' ? 'Regal A' : 'Kiste 5 · Heringe'}
+          className="w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500"
+        />
 
-          {mode === 'shelf' && (
-            <div className="flex gap-6">
-              <Stepper label="Höhe (Fächer)" value={rows} set={setRows} />
-              <Stepper label="Breite (Fächer)" value={cols} set={setCols} />
-            </div>
-          )}
+        {mode === 'shelf' && (
+          <div className="flex gap-6">
+            <Stepper label="Höhe (Fächer)" value={rows} set={setRows} />
+            <Stepper label="Breite (Fächer)" value={cols} set={setCols} />
+          </div>
+        )}
 
-          {mode === 'box' && (
-            <div className="space-y-2">
-              <label className="block text-sm text-moos-600">Platzierung</label>
+        {mode === 'box' && (
+          <div className="space-y-2">
+            <label className="block text-sm text-moos-600">Platzierung</label>
+            <select
+              value={shelfId}
+              onChange={(e) => {
+                setShelfId(e.target.value);
+                setCell('');
+              }}
+              className="w-full rounded-xl border border-moos-200 px-3 py-2"
+            >
+              <option value="">Freistehend (unter den Regalen)</option>
+              {shelves.map((s) => (
+                <option key={s.id} value={s.id}>
+                  In {s.label}
+                </option>
+              ))}
+            </select>
+            {chosenShelf && (
               <select
-                value={shelfId}
-                onChange={(e) => {
-                  setShelfId(e.target.value);
-                  setCell('');
-                }}
+                value={cell}
+                onChange={(e) => setCell(e.target.value)}
                 className="w-full rounded-xl border border-moos-200 px-3 py-2"
               >
-                <option value="">Freistehend (unter den Regalen)</option>
-                {shelves.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    In {s.label}
-                  </option>
-                ))}
+                <option value="">Fach wählen …</option>
+                {Array.from({ length: chosenShelf.gridRows }).flatMap((_, r) =>
+                  Array.from({ length: chosenShelf.gridCols }).map((__, c) => (
+                    <option key={`${r}-${c}`} value={`${r}-${c}`}>
+                      Fach Reihe {r + 1}, Spalte {c + 1}
+                    </option>
+                  )),
+                )}
               </select>
-              {chosenShelf && (
-                <select
-                  value={cell}
-                  onChange={(e) => setCell(e.target.value)}
-                  className="w-full rounded-xl border border-moos-200 px-3 py-2"
-                >
-                  <option value="">Fach wählen …</option>
-                  {Array.from({ length: chosenShelf.gridRows }).flatMap((_, r) =>
-                    Array.from({ length: chosenShelf.gridCols }).map((__, c) => (
-                      <option key={`${r}-${c}`} value={`${r}-${c}`}>
-                        Fach Reihe {r + 1}, Spalte {c + 1}
-                      </option>
-                    )),
-                  )}
-                </select>
-              )}
-            </div>
-          )}
-
-          {save.isError && <p className="text-sm text-red-600">{(save.error as Error).message}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button
-              onClick={() => save.mutate()}
-              disabled={!label.trim() || save.isPending || (mode === 'box' && !!shelfId && !cell)}
-            >
-              Speichern
-            </Button>
-            </div>
+            )}
           </div>
-        </Card>
+        )}
+
+        {save.isError && <p className="text-sm text-red-600">{(save.error as Error).message}</p>}
       </div>
-    </div>
+    </Modal>
   );
 }
 

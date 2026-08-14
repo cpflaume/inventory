@@ -63,3 +63,52 @@ export function EmptyState({ emoji, title, hint }: { emoji: string; title: strin
     </div>
   );
 }
+
+/** Einheitliche Feld-Optik für Text-/Zahl-/Select-Eingaben. */
+export const inputClass =
+  'w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500';
+
+/**
+ * Gemeinsame Modal-Hülle: mobil ein Bottom-Sheet, ab `sm` zentriert. `minHalf`
+ * erzwingt mindestens halbe Bildschirmhöhe (für Kisten-/Fach-Ansichten).
+ */
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  minHalf,
+}: {
+  title: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  minHalf?: boolean;
+}) {
+  return (
+    <div
+      className="no-print fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className={`flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl ${
+          minHalf ? 'min-h-[50vh]' : ''
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-moos-100 px-5 py-3">
+          <h3 className="font-bold text-moos-800">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-xl leading-none text-moos-400 hover:text-moos-600"
+            aria-label="Schließen"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto px-5 py-4">{children}</div>
+        {footer && <div className="border-t border-moos-100 px-5 py-3">{footer}</div>}
+      </div>
+    </div>
+  );
+}

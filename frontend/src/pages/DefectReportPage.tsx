@@ -2,16 +2,21 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Severity } from '../api/types';
+import type { DefectReport, Severity } from '../api/types';
 import { Button, Card, EmptyState } from '../components/ui';
+import { DefectDetailDialog } from '../components/DefectDetail';
+import { useAuth } from '../auth/AuthContext';
 
 export default function DefectReportPage() {
   const { depotId = '' } = useParams();
   const qc = useQueryClient();
+  const { canEdit: canEditFn } = useAuth();
+  const canEdit = canEditFn(depotId);
   const [severity, setSeverity] = useState<Severity>('MACKE');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [itemId, setItemId] = useState('');
+  const [detail, setDetail] = useState<DefectReport | null>(null);
 
   const items = useQuery({ queryKey: ['items', depotId], queryFn: () => api.listItems(depotId) });
   const reports = useQuery({
@@ -93,18 +98,35 @@ export default function DefectReportPage() {
         <div className="grid gap-2">
           {open.map((r) => (
             <Card key={r.id} className="flex items-center gap-3 p-3">
-              <span className="text-xl">{r.severity === 'DEFEKT' ? '💥' : '🩹'}</span>
-              <div className="flex-1">
-                <p className="font-medium text-moos-800">{r.title}</p>
-                {r.description && <p className="text-xs text-moos-500">{r.description}</p>}
-              </div>
-              <Button variant="ghost" onClick={() => resolve.mutate(r.id)} disabled={resolve.isPending}>
-                Erledigt
-              </Button>
+              <button
+                type="button"
+                onClick={() => setDetail(r)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <span className="text-xl">{r.severity === 'DEFEKT' ? '💥' : '🩹'}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-moos-800">{r.title}</span>
+                  {r.description && <span className="block truncate text-xs text-moos-500">{r.description}</span>}
+                </span>
+              </button>
+              {canEdit && (
+                <Button variant="ghost" onClick={() => resolve.mutate(r.id)} disabled={resolve.isPending}>
+                  Erledigt
+                </Button>
+              )}
             </Card>
           ))}
         </div>
       </section>
+
+      {detail && (
+        <DefectDetailDialog
+          depotId={depotId}
+          defect={detail}
+          canEdit={canEdit}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </div>
   );
 }

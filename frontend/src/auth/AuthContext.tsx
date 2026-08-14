@@ -1,12 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, clearToken, getToken, setToken, setUnauthorizedHandler } from '../api/client';
-import type { DepotAccess, UserSummary } from '../api/types';
+import type { DepotAccess, DepotRole, UserSummary } from '../api/types';
 
 interface AuthState {
   user: UserSummary | null;
   depots: DepotAccess[];
   loading: boolean;
   isAdmin: boolean;
+  /** Effektive Rolle des Benutzers im Lager (Plattform-Admin: ADMIN überall). */
+  roleForDepot: (depotId: string) => DepotRole | null;
+  /** Darf der Benutzer im Lager bearbeiten (EDITOR oder ADMIN)? */
+  canEdit: (depotId: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -62,7 +66,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<AuthState>(
-    () => ({ user, depots, loading, isAdmin: user?.systemRole === 'ADMIN', login, logout, refresh: loadMe }),
+    () => {
+      const roleForDepot = (depotId: string): DepotRole | null =>
+        depots.find((d) => d.depotId === depotId)?.role ?? null;
+      return {
+        user,
+        depots,
+        loading,
+        isAdmin: user?.systemRole === 'ADMIN',
+        roleForDepot,
+        canEdit: (depotId: string) => {
+          const role = roleForDepot(depotId);
+          return role === 'EDITOR' || role === 'ADMIN';
+        },
+        login,
+        logout,
+        refresh: loadMe,
+      };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, depots, loading],
   );
