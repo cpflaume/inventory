@@ -28,6 +28,12 @@
     {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
+    },
+    {
+      "description": "Base-Image an die Gradle-Java-Toolchain (25) koppeln: kein Major-Sprung, der bootJar bricht.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["eclipse-temurin"],
+      "allowedVersions": "/^25(\\.|-)/"
     }
   ]
 }
