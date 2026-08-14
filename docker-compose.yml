@@ -33,7 +33,7 @@ services:
   # Frontend als Vite-Dev-Server (Hot Reload + /api-Proxy an das Backend).
   # Das Produktions-Frontend läuft dagegen als eigenes nginx-Image (frontend/Dockerfile).
   frontend:
-    image: node:22-alpine
+    image: node:24-alpine
     working_dir: /app
     depends_on: [backend]
     environment:

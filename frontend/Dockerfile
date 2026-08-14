@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage, multi-arch-fähig (amd64 + arm64 für Oracle Cloud / Ampere).
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
