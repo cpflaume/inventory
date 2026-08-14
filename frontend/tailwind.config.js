@@ -27,6 +27,19 @@ export default {
           500: '#e97b1f',
           600: '#c85f12',
         },
+        // Holztöne für Regale & Kisten (virtuelles Lager).
+        holz: {
+          50: '#f7efe2',
+          100: '#ecd9bd',
+          200: '#d9b78d',
+          300: '#c4965f',
+          400: '#a9793f',
+          500: '#8a5a2b',
+          600: '#6f4520',
+          700: '#573418',
+          800: '#412611',
+          900: '#2c1a0b',
+        },
       },
       fontFamily: {
         sans: ['ui-rounded', 'system-ui', 'Segoe UI', 'sans-serif'],
