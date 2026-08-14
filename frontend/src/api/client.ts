@@ -132,6 +132,8 @@ export const api = {
   getDepot: (d: string) => http<Depot>(`/depots/${d}`),
   createDepot: (body: { name: string; description?: string }) =>
     http<Depot>('/depots', { method: 'POST', body: JSON.stringify(body) }),
+  updateDepot: (d: string, body: { name: string; description?: string }) =>
+    http<Depot>(`/depots/${d}`, { method: 'PUT', body: JSON.stringify(body) }),
 
   warehouse: (d: string) => http<WarehouseView>(`/depots/${d}/warehouse`),
   listLocations: (d: string) => http<Location[]>(`/depots/${d}/locations`),
