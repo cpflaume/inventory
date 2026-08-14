@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import type { DepotRole, GroupSummary, UserSummary } from '../api/types';
 import { Button, Card } from '../components/ui';
 
@@ -33,11 +34,17 @@ function statusBadge(status: UserSummary['status']) {
 
 function UsersSection() {
   const qc = useQueryClient();
+  const { user: me } = useAuth();
   const users = useQuery({ queryKey: ['admin-users'], queryFn: api.adminUsers });
   const groups = useQuery({ queryKey: ['admin-groups'], queryFn: api.adminGroups });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin-users'] });
 
   const approve = useMutation({ mutationFn: api.approveUser, onSuccess: invalidate });
+  const remove = useMutation({
+    mutationFn: (u: UserSummary) => api.deleteUser(u.id),
+    onSuccess: invalidate,
+    onError: (e) => alert((e as Error).message),
+  });
   const toggleAdmin = useMutation({
     mutationFn: (u: UserSummary) =>
       api.setSystemRole(u.id, u.systemRole === 'ADMIN' ? 'USER' : 'ADMIN'),
@@ -66,8 +73,8 @@ function UsersSection() {
         {users.data?.map((u) => (
           <Card key={u.id} className="p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-moos-800">{u.displayName || u.username}</span>
-              <span className="text-xs text-moos-400">@{u.username}</span>
+              <span className="font-semibold text-moos-800">{u.displayName || u.email || u.username}</span>
+              <span className="text-xs text-moos-400">✉️ {u.email || u.username}</span>
               {statusBadge(u.status)}
               <span className="rounded-full bg-moos-50 px-2 py-0.5 text-xs text-moos-600">{u.provider}</span>
               {u.systemRole === 'ADMIN' && (
@@ -85,6 +92,18 @@ function UsersSection() {
                 <Button variant="ghost" onClick={() => toggleAdmin.mutate(u)}>
                   {u.systemRole === 'ADMIN' ? 'Admin entziehen' : 'Zum Admin'}
                 </Button>
+                {u.id !== me?.id && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (window.confirm(`Benutzer „${u.displayName || u.email || u.username}" wirklich löschen?`)) {
+                        remove.mutate(u);
+                      }
+                    }}
+                  >
+                    Löschen
+                  </Button>
+                )}
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">

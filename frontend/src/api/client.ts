@@ -116,6 +116,7 @@ export const api = {
     http<UserSummary>(`/admin/users/${id}/groups`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   removeUserFromGroup: (id: string, groupId: string) =>
     http<UserSummary>(`/admin/users/${id}/groups/${groupId}`, { method: 'DELETE' }),
+  deleteUser: (id: string) => http<void>(`/admin/users/${id}`, { method: 'DELETE' }),
   adminGroups: () => http<GroupSummary[]>('/admin/groups'),
   createGroup: (body: { name: string; description?: string }) =>
     http<GroupSummary>('/admin/groups', { method: 'POST', body: JSON.stringify(body) }),
