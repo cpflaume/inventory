@@ -7,6 +7,7 @@ import de.grauerreiter.jurtenburg.web.AuthDtos.GroupDepotMapping;
 import de.grauerreiter.jurtenburg.web.AuthDtos.GroupSummary;
 import de.grauerreiter.jurtenburg.web.AuthDtos.MapGroupDepotRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.SetSystemRoleRequest;
+import de.grauerreiter.jurtenburg.web.AuthDtos.SetUserStatusRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.UserSummary;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -50,6 +51,12 @@ public class AdminController {
     @PostMapping("/users/{userId}/system-role")
     public UserSummary setSystemRole(@PathVariable UUID userId, @Valid @RequestBody SetSystemRoleRequest req) {
         return UserSummary.of(admin.setSystemRole(userId, req.systemRole()));
+    }
+
+    /** Benutzer sperren/entsperren (bzw. Status setzen). */
+    @PostMapping("/users/{userId}/status")
+    public UserSummary setStatus(@PathVariable UUID userId, @Valid @RequestBody SetUserStatusRequest req) {
+        return UserSummary.of(admin.setUserStatus(userId, req.status()));
     }
 
     @PostMapping("/users/{userId}/groups")

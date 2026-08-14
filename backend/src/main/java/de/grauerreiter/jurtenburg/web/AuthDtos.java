@@ -81,6 +81,9 @@ public final class AuthDtos {
     public record SetSystemRoleRequest(@NotNull SystemRole systemRole) {
     }
 
+    public record SetUserStatusRequest(@NotNull UserStatus status) {
+    }
+
     public record GroupDepotMapping(UUID depotId, String depotName, DepotRole role) {
     }
 }

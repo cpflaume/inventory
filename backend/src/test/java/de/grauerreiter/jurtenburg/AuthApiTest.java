@@ -102,4 +102,31 @@ class AuthApiTest extends AbstractIntegrationTest {
         anonymousMockMvc(context).perform(get("/api/depots"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void cannotRemoveLastActiveAdmin() throws Exception {
+        MockMvc admin = adminMockMvc(context);
+        // Der Bootstrap-Admin ist der einzige aktive Admin.
+        String usersBody = admin.perform(get("/api/admin/users"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String adminId = null;
+        for (var node : json.readTree(usersBody)) {
+            if ("ADMIN".equals(node.get("systemRole").asText())
+                    && "ACTIVE".equals(node.get("status").asText())) {
+                adminId = node.get("id").asText();
+                break;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertNotNull(adminId, "Bootstrap-Admin erwartet");
+
+        // Weder degradieren …
+        admin.perform(post("/api/admin/users/{id}/system-role", adminId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"systemRole\":\"USER\"}"))
+                .andExpect(status().isConflict());
+        // … noch sperren.
+        admin.perform(post("/api/admin/users/{id}/status", adminId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DISABLED\"}"))
+                .andExpect(status().isConflict());
+    }
 }

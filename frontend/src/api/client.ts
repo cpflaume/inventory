@@ -15,6 +15,7 @@ import type {
   MeResponse,
   Severity,
   SystemRole,
+  UserStatus,
   UserSummary,
   WarehouseView,
 } from './types';
@@ -109,6 +110,8 @@ export const api = {
   approveUser: (id: string) => http<UserSummary>(`/admin/users/${id}/approve`, { method: 'POST' }),
   setSystemRole: (id: string, systemRole: SystemRole) =>
     http<UserSummary>(`/admin/users/${id}/system-role`, { method: 'POST', body: JSON.stringify({ systemRole }) }),
+  setUserStatus: (id: string, status: UserStatus) =>
+    http<UserSummary>(`/admin/users/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   addUserToGroup: (id: string, groupId: string) =>
     http<UserSummary>(`/admin/users/${id}/groups`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   removeUserFromGroup: (id: string, groupId: string) =>

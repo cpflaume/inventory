@@ -42,6 +42,13 @@ function UsersSection() {
     mutationFn: (u: UserSummary) =>
       api.setSystemRole(u.id, u.systemRole === 'ADMIN' ? 'USER' : 'ADMIN'),
     onSuccess: invalidate,
+    onError: (e) => alert((e as Error).message),
+  });
+  const toggleStatus = useMutation({
+    mutationFn: (u: UserSummary) =>
+      api.setUserStatus(u.id, u.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED'),
+    onSuccess: invalidate,
+    onError: (e) => alert((e as Error).message),
   });
   const addGroup = useMutation({
     mutationFn: (v: { userId: string; groupId: string }) => api.addUserToGroup(v.userId, v.groupId),
@@ -69,6 +76,11 @@ function UsersSection() {
               <div className="ml-auto flex gap-2">
                 {u.status === 'PENDING' && (
                   <Button onClick={() => approve.mutate(u.id)}>Freigeben</Button>
+                )}
+                {u.status !== 'PENDING' && (
+                  <Button variant="ghost" onClick={() => toggleStatus.mutate(u)}>
+                    {u.status === 'DISABLED' ? 'Entsperren' : 'Sperren'}
+                  </Button>
                 )}
                 <Button variant="ghost" onClick={() => toggleAdmin.mutate(u)}>
                   {u.systemRole === 'ADMIN' ? 'Admin entziehen' : 'Zum Admin'}

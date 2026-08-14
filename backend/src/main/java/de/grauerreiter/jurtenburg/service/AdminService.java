@@ -59,6 +59,9 @@ public class AdminService {
     @Transactional
     public AppUser setUserStatus(UUID userId, UserStatus status) {
         AppUser user = user(userId);
+        if (status != UserStatus.ACTIVE) {
+            assertNotLastActiveAdmin(user);
+        }
         user.setStatus(status);
         return users.save(user);
     }
@@ -66,8 +69,20 @@ public class AdminService {
     @Transactional
     public AppUser setSystemRole(UUID userId, SystemRole role) {
         AppUser user = user(userId);
+        if (role != SystemRole.ADMIN) {
+            assertNotLastActiveAdmin(user);
+        }
         user.setSystemRole(role);
         return users.save(user);
+    }
+
+    /** Blockt Änderungen, die den letzten aktiven Plattform-Admin entfernen würden. */
+    private void assertNotLastActiveAdmin(AppUser user) {
+        boolean isActiveAdmin = user.getSystemRole() == SystemRole.ADMIN && user.getStatus() == UserStatus.ACTIVE;
+        if (isActiveAdmin
+                && !users.existsBySystemRoleAndStatusAndIdNot(SystemRole.ADMIN, UserStatus.ACTIVE, user.getId())) {
+            throw new ConflictException("Der letzte aktive Admin kann nicht entzogen oder gesperrt werden.");
+        }
     }
 
     @Transactional
