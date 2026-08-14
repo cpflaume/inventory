@@ -99,9 +99,9 @@ export interface DefectInput {
 
 export const api = {
   // ---- Auth ----
-  register: (body: { username: string; email?: string; displayName?: string; password: string }) =>
+  register: (body: { email: string; displayName?: string; password: string }) =>
     http<UserSummary>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
-  login: (body: { username: string; password: string }) =>
+  login: (body: { email: string; password: string }) =>
     http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => http<MeResponse>('/auth/me'),
 
@@ -116,6 +116,7 @@ export const api = {
     http<UserSummary>(`/admin/users/${id}/groups`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   removeUserFromGroup: (id: string, groupId: string) =>
     http<UserSummary>(`/admin/users/${id}/groups/${groupId}`, { method: 'DELETE' }),
+  deleteUser: (id: string) => http<void>(`/admin/users/${id}`, { method: 'DELETE' }),
   adminGroups: () => http<GroupSummary[]>('/admin/groups'),
   createGroup: (body: { name: string; description?: string }) =>
     http<GroupSummary>('/admin/groups', { method: 'POST', body: JSON.stringify(body) }),

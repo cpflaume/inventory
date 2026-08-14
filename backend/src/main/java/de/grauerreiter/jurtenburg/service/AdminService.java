@@ -85,6 +85,21 @@ public class AdminService {
         }
     }
 
+    /**
+     * Löscht einen Benutzer endgültig. Der letzte aktive Admin ist geschützt, und ein Admin
+     * kann sein eigenes Konto nicht löschen. Gruppen-Mitgliedschaften werden per FK-Cascade
+     * (ON DELETE CASCADE) mitentfernt.
+     */
+    @Transactional
+    public void deleteUser(UUID actingUserId, UUID targetUserId) {
+        if (java.util.Objects.equals(actingUserId, targetUserId)) {
+            throw new ConflictException("Du kannst dein eigenes Konto nicht löschen.");
+        }
+        AppUser user = user(targetUserId);
+        assertNotLastActiveAdmin(user);
+        users.delete(user);
+    }
+
     @Transactional
     public AppUser addUserToGroup(UUID userId, UUID groupId) {
         AppUser user = user(userId);

@@ -1,5 +1,6 @@
 package de.grauerreiter.jurtenburg.web;
 
+import de.grauerreiter.jurtenburg.security.AppUserDetails;
 import de.grauerreiter.jurtenburg.service.AdminService;
 import de.grauerreiter.jurtenburg.web.AuthDtos.AssignGroupRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.CreateGroupRequest;
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -67,6 +69,13 @@ public class AdminController {
     @DeleteMapping("/users/{userId}/groups/{groupId}")
     public UserSummary removeGroup(@PathVariable UUID userId, @PathVariable UUID groupId) {
         return UserSummary.of(admin.removeUserFromGroup(userId, groupId));
+    }
+
+    /** Benutzer endgültig löschen (nicht sich selbst, nicht den letzten aktiven Admin). */
+    @DeleteMapping("/users/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@AuthenticationPrincipal AppUserDetails principal, @PathVariable UUID userId) {
+        admin.deleteUser(principal.getUserId(), userId);
     }
 
     // ---- Gruppen ----

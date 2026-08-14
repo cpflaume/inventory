@@ -29,25 +29,36 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    /** Registrierung eines lokalen Benutzers. Startet als PENDING (Admin muss freigeben). */
+    /**
+     * Registrierung eines lokalen Benutzers. Die E-Mail-Adresse ist zugleich der Benutzername
+     * (Login-Identität); der frei wählbare Anzeigename bleibt davon getrennt. Startet als PENDING
+     * (Admin muss freigeben).
+     */
     @Transactional
     public AppUser register(RegisterRequest req) {
-        if (users.existsByUsername(req.username())) {
-            throw new ConflictException("Benutzername ist bereits vergeben: " + req.username());
+        String email = req.email().trim();
+        if (users.existsByUsername(email)) {
+            throw new ConflictException("E-Mail-Adresse ist bereits vergeben: " + email);
         }
-        AppUser user = new AppUser(req.username(), AuthProvider.LOCAL);
-        user.setEmail(req.email());
+        AppUser user = new AppUser(email, AuthProvider.LOCAL);
+        user.setEmail(email);
         user.setDisplayName(req.displayName() == null || req.displayName().isBlank()
-                ? req.username() : req.displayName());
+                ? defaultDisplayName(email) : req.displayName());
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         // status = PENDING, systemRole = USER (Defaults)
         return users.save(user);
     }
 
-    /** Login. Prüft Passwort und Freischaltung; liefert ein App-JWT. */
+    /** Ohne freien Anzeigenamen der lokale Teil der E-Mail (vor dem {@code @}). */
+    private static String defaultDisplayName(String email) {
+        int at = email.indexOf('@');
+        return at > 0 ? email.substring(0, at) : email;
+    }
+
+    /** Login per E-Mail. Prüft Passwort und Freischaltung; liefert ein App-JWT. */
     @Transactional(readOnly = true)
-    public String login(String username, String password) {
-        AppUser user = users.findByUsername(username)
+    public String login(String email, String password) {
+        AppUser user = users.findByUsername(email == null ? null : email.trim())
                 .filter(u -> u.getProvider() == AuthProvider.LOCAL)
                 .orElseThrow(() -> new UnauthorizedException("Ungültige Anmeldedaten."));
         if (user.getPasswordHash() == null || !passwordEncoder.matches(password, user.getPasswordHash())) {

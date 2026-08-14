@@ -1,6 +1,7 @@
 package de.grauerreiter.jurtenburg;
 
 import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,17 +35,19 @@ class AuthApiTest extends AbstractIntegrationTest {
         MockMvc admin = adminMockMvc(context);
         MockMvc anon = anonymousMockMvc(context);
 
-        // 1) Registrierung → 201, PENDING.
+        // 1) Registrierung → 201, PENDING. Die E-Mail ist zugleich der Benutzername.
         String userBody = anon.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"displayName\":\"Erika\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status", is("PENDING")))
+                .andExpect(jsonPath("$.username", is("erika@example.org")))
+                .andExpect(jsonPath("$.email", is("erika@example.org")))
                 .andReturn().getResponse().getContentAsString();
         String erikaId = id(userBody, "id");
 
         // 2) Login vor Freigabe → 401.
         anon.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isUnauthorized());
 
         // 3) Admin gibt frei.
@@ -54,7 +57,7 @@ class AuthApiTest extends AbstractIntegrationTest {
 
         // 4) Login → 200 + Token.
         String loginBody = anon.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"erika\",\"password\":\"Passwort1\"}"))
+                        .content("{\"email\":\"erika@example.org\",\"password\":\"Passwort1\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         String token = id(loginBody, "token");
@@ -89,12 +92,49 @@ class AuthApiTest extends AbstractIntegrationTest {
         // 9) /me zeigt das Lager mit Rolle EDITOR.
         anon.perform(get("/api/auth/me").header("Authorization", bearer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.username", is("erika")))
+                .andExpect(jsonPath("$.user.username", is("erika@example.org")))
                 .andExpect(jsonPath("$.depots[0].role", is("EDITOR")));
 
         // 10) Kein Admin-Zugriff für normalen Benutzer (403).
         anon.perform(get("/api/admin/users").header("Authorization", bearer))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanDeleteUserButNotLastActiveAdmin() throws Exception {
+        MockMvc admin = adminMockMvc(context);
+        MockMvc anon = anonymousMockMvc(context);
+
+        // Registrierter Benutzer wird angelegt …
+        String userId = id(anon.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"weg@example.org\",\"password\":\"Passwort1\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "id");
+
+        // … und vom Admin gelöscht (204).
+        admin.perform(delete("/api/admin/users/{id}", userId))
+                .andExpect(status().isNoContent());
+
+        // Danach ist er nicht mehr gelistet.
+        String usersBody = admin.perform(get("/api/admin/users"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (var node : json.readTree(usersBody)) {
+            org.junit.jupiter.api.Assertions.assertNotEquals(userId, node.get("id").asText());
+        }
+
+        // Den letzten aktiven Admin (Bootstrap-Admin) kann auch der Admin nicht löschen (409).
+        String adminId = null;
+        for (var node : json.readTree(usersBody)) {
+            if ("ADMIN".equals(node.get("systemRole").asText())
+                    && "ACTIVE".equals(node.get("status").asText())) {
+                adminId = node.get("id").asText();
+                break;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertNotNull(adminId, "Bootstrap-Admin erwartet");
+        admin.perform(delete("/api/admin/users/{id}", adminId))
+                .andExpect(status().isConflict());
     }
 
     @Test
