@@ -4,7 +4,7 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
 über `cpflaume/copf-demo-gitops`.
 
 ## Struktur
-- `backend/` — Spring Boot (Java 21, Gradle). Domäne unter `de.grauerreiter.jurtenburg`
+- `backend/` — Spring Boot (Java 25, Gradle). Domäne unter `de.grauerreiter.jurtenburg`
   (`domain`, `repo`, `service`, `web`, `config`). Schema per Flyway (`src/main/resources/db/migration`).
 - `frontend/` — React + Vite + TS + Tailwind. API-Client in `src/api`, Seiten in `src/pages`.
 - `.github/workflows/` — `ci.yml` (Tests FE+BE), `release.yml` (Multi-Arch-Images + GitOps-Dispatch).
