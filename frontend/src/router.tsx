@@ -8,21 +8,39 @@ import DefectReportPage from './pages/DefectReportPage';
 import InventoryPrintPage from './pages/print/InventoryPrintPage';
 import BoxLabelPrintPage from './pages/print/BoxLabelPrintPage';
 import KitPrintPage from './pages/print/KitPrintPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import AdminPage from './pages/AdminPage';
+import { RequireAdmin, RequireAuth } from './auth/guards';
 
 export const router = createBrowserRouter([
-  { path: '/', element: <DepotListPage /> },
+  // Öffentlich
+  { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+
+  // Angemeldet
   {
-    path: '/lager/:depotId',
-    element: <Layout />,
+    element: <RequireAuth />,
     children: [
-      { index: true, element: <WarehousePage /> },
-      { path: 'material', element: <MaterialPage /> },
-      { path: 'bausaetze', element: <KitsPage /> },
-      { path: 'mangel', element: <DefectReportPage /> },
+      { path: '/', element: <DepotListPage /> },
+      {
+        element: <RequireAdmin />,
+        children: [{ path: '/admin', element: <AdminPage /> }],
+      },
+      {
+        path: '/lager/:depotId',
+        element: <Layout />,
+        children: [
+          { index: true, element: <WarehousePage /> },
+          { path: 'material', element: <MaterialPage /> },
+          { path: 'bausaetze', element: <KitsPage /> },
+          { path: 'mangel', element: <DefectReportPage /> },
+        ],
+      },
+      // Druckansichten ohne Layout-Chrome.
+      { path: '/lager/:depotId/druck/bestand', element: <InventoryPrintPage /> },
+      { path: '/lager/:depotId/druck/kiste/:locationId', element: <BoxLabelPrintPage /> },
+      { path: '/lager/:depotId/druck/bausatz/:kitId', element: <KitPrintPage /> },
     ],
   },
-  // Druckansichten ohne Layout-Chrome (eigene @media print Seiten).
-  { path: '/lager/:depotId/druck/bestand', element: <InventoryPrintPage /> },
-  { path: '/lager/:depotId/druck/kiste/:locationId', element: <BoxLabelPrintPage /> },
-  { path: '/lager/:depotId/druck/bausatz/:kitId', element: <KitPrintPage /> },
 ]);

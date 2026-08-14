@@ -29,7 +29,7 @@ class WarehouseApiTest extends AbstractIntegrationTest {
     ObjectMapper json;
 
     MockMvc mvc() {
-        return MockMvcBuilders.webAppContextSetup(context).build();
+        return adminMockMvc(context);
     }
 
     private String createDepot(String name) throws Exception {
