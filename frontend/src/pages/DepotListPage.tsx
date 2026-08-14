@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Card, EmptyState } from '../components/ui';
+import { Button, Card, EmptyState, inputClass } from '../components/ui';
+import type { Depot } from '../api/types';
 
 export default function DepotListPage() {
   const qc = useQueryClient();
@@ -54,15 +55,7 @@ export default function DepotListPage() {
       )}
       <div className="grid gap-3">
         {depots?.map((d) => (
-          <Link key={d.id} to={`/lager/${d.id}`}>
-            <Card className="flex items-center justify-between p-4 transition hover:ring-moos-300">
-              <div>
-                <p className="font-semibold text-moos-800">{d.name}</p>
-                {d.description && <p className="text-sm text-moos-500">{d.description}</p>}
-              </div>
-              <span className="text-moos-400">→</span>
-            </Card>
-          </Link>
+          <DepotRow key={d.id} depot={d} editable={isAdmin} />
         ))}
       </div>
 
@@ -87,5 +80,91 @@ export default function DepotListPage() {
       )}
       {create.isError && <p className="mt-2 text-sm text-red-600">{(create.error as Error).message}</p>}
     </div>
+  );
+}
+
+/** Eine Lager-Kachel. Admins können Name und Beschreibung inline bearbeiten. */
+function DepotRow({ depot, editable }: { depot: Depot; editable: boolean }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(depot.name);
+  const [description, setDescription] = useState(depot.description ?? '');
+
+  const update = useMutation({
+    mutationFn: () => api.updateDepot(depot.id, { name: name.trim(), description: description.trim() || undefined }),
+    onSuccess: () => {
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ['depots'] });
+    },
+  });
+
+  const startEditing = () => {
+    setName(depot.name);
+    setDescription(depot.description ?? '');
+    update.reset();
+    setEditing(true);
+  };
+
+  if (editing) {
+    return (
+      <Card className="p-4">
+        <form
+          className="grid gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (name.trim()) update.mutate();
+          }}
+        >
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Lager-Name"
+            aria-label="Lager-Name"
+            autoFocus
+            className={inputClass}
+          />
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Beschreibung (optional)"
+            aria-label="Beschreibung"
+            className={inputClass}
+          />
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!name.trim() || update.isPending}>
+              Speichern
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+              Abbrechen
+            </Button>
+          </div>
+          {update.isError && <p className="text-sm text-red-600">{(update.error as Error).message}</p>}
+        </form>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="flex items-center justify-between p-4 transition hover:ring-moos-300">
+      <Link to={`/lager/${depot.id}`} className="min-w-0 flex-1">
+        <p className="font-semibold text-moos-800">{depot.name}</p>
+        {depot.description && <p className="text-sm text-moos-500">{depot.description}</p>}
+      </Link>
+      <div className="ml-3 flex shrink-0 items-center gap-3">
+        {editable && (
+          <button
+            onClick={startEditing}
+            className="text-moos-500 hover:text-moos-700"
+            aria-label="Lager bearbeiten"
+            title="Lager bearbeiten"
+          >
+            ✏️
+          </button>
+        )}
+        <Link to={`/lager/${depot.id}`} className="text-moos-400" aria-hidden="true">
+          →
+        </Link>
+      </div>
+    </Card>
   );
 }

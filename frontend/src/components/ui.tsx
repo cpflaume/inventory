@@ -68,6 +68,13 @@ export function EmptyState({ emoji, title, hint }: { emoji: string; title: strin
 export const inputClass =
   'w-full rounded-xl border border-moos-200 px-4 py-2 outline-none focus:border-moos-500';
 
+/** Zentrierte Versionsanzeige (aus der package.json zur Build-Zeit injiziert). */
+export function AppVersion({ className = '' }: { className?: string }) {
+  return (
+    <p className={`text-center text-xs text-moos-400 ${className}`}>Version {__APP_VERSION__}</p>
+  );
+}
+
 /**
  * Gemeinsame Modal-Hülle: mobil ein Bottom-Sheet, ab `sm` zentriert. `minHalf`
  * erzwingt mindestens halbe Bildschirmhöhe (für Kisten-/Fach-Ansichten).

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { BoxView, CellView, Item, ShelfView } from '../api/types';
-import { Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
+import { AppVersion, Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
 import { ItemDialog, ItemRow } from '../components/items';
 import { LocationDrawer } from '../components/LocationDrawer';
 import type { LocationTarget } from '../components/locationTarget';
@@ -125,6 +125,8 @@ export default function WarehousePage() {
           onClose={() => setDetailItem(null)}
         />
       )}
+
+      <AppVersion className="pt-2" />
     </div>
   );
 }

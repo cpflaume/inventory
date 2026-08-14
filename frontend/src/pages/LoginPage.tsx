@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Card } from '../components/ui';
+import { AppVersion, Button, Card } from '../components/ui';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -26,7 +26,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 pb-10">
       <div className="mb-6 text-center">
         <div className="text-5xl">⛺</div>
         <h1 className="mt-2 text-3xl font-bold text-moos-800">Jurtenburg</h1>
@@ -61,6 +61,7 @@ export default function LoginPage() {
           Registrieren
         </Link>
       </p>
+      <AppVersion className="absolute inset-x-0 bottom-4" />
     </div>
   );
 }
