@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Card, EmptyState, inputClass } from '../components/ui';
+import { AppVersion, Button, Card, EmptyState, inputClass } from '../components/ui';
 import type { Depot } from '../api/types';
 
 export default function DepotListPage() {
@@ -79,6 +79,8 @@ export default function DepotListPage() {
         </form>
       )}
       {create.isError && <p className="mt-2 text-sm text-red-600">{(create.error as Error).message}</p>}
+
+      <AppVersion className="pt-8" />
     </div>
   );
 }

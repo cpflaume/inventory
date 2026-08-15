@@ -39,16 +39,19 @@ export function woodStyle(opts?: {
 
 // --- Leere Regalfächer ------------------------------------------------------
 
-// Fund-Grafiken, die ein leeres Fach optisch beleben. Mind. 3 verschiedene,
-// per Seed stabil pro Fach gewählt (Spinnweben, krummer Hering + weitere).
-const EMPTY_ART = [cobweb, hering, leaf, acorn];
+// Fund-Grafiken, die ein leeres Fach gelegentlich optisch beleben. Nicht jedes
+// Fach bekommt etwas — die `null`-Einträge lassen das Fach bewusst leer, damit
+// nicht in jedem Fach zwanghaft eine Grafik liegt. Per Seed stabil pro Fach.
+const EMPTY_ART: (null | (() => ReactNode))[] = [cobweb, leaf, acorn, null, null, null];
 
 /**
- * Deko für ein leeres Fach: zunächst der „tiefe" Innenraum (dunkler Verlauf
- * + Innenschatten), darüber eine per Seed gewählte Fund-Grafik.
+ * Deko für ein leeres Fach: der „tiefe" Innenraum (dunkler Verlauf +
+ * Innenschatten) kommt vom Fach selbst. Hier liegt – falls überhaupt – eine
+ * per Seed gewählte Fund-Grafik darüber; sonst bleibt das Fach leer.
  */
 export function EmptyCellArt({ seed }: { seed: number }) {
   const Art = EMPTY_ART[((seed % EMPTY_ART.length) + EMPTY_ART.length) % EMPTY_ART.length];
+  if (!Art) return null;
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <Art />
@@ -98,34 +101,6 @@ function cobweb() {
         <g stroke="#e9e5da" strokeOpacity="0.55">
           <circle cx={cx + Math.cos(spokes[3]) * 52} cy={cy + Math.sin(spokes[3]) * 52} r="1.6" fill="#3a2f26" stroke="none" />
         </g>
-      </g>
-    </Scene>
-  );
-}
-
-// Ein einzelner, krummer Hering (Zeltnagel) auf dem Fachboden.
-function hering() {
-  return (
-    <Scene>
-      {/* Bodenschatten */}
-      <ellipse cx="50" cy="80" rx="38" ry="6" fill="#000" fillOpacity="0.3" />
-      <defs>
-        <linearGradient id="hering-steel" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#eef1f5" />
-          <stop offset="50%" stopColor="#a8adb6" />
-          <stop offset="100%" stopColor="#6a6f78" />
-        </linearGradient>
-      </defs>
-      <g transform="rotate(-13 50 66)" strokeLinecap="round" fill="none">
-        {/* dunkle Kontur für Kontrast auf dem Holz */}
-        <path d="M14 70 Q 44 56 66 66 Q 82 74 88 60" stroke="#1c1f24" strokeWidth="10.5" />
-        {/* verbogener Schaft */}
-        <path d="M14 70 Q 44 56 66 66 Q 82 74 88 60" stroke="url(#hering-steel)" strokeWidth="7.5" />
-        {/* Haken-Öse am dünnen Ende */}
-        <path d="M88 60 q 9 -6 3 -16 q -6 -7 -14 -2" stroke="#1c1f24" strokeWidth="7" />
-        <path d="M88 60 q 9 -6 3 -16 q -6 -7 -14 -2" stroke="url(#hering-steel)" strokeWidth="4.5" />
-        {/* Glanzkante */}
-        <path d="M16 68 Q 44 55 64 63" stroke="#f4f6f9" strokeOpacity="0.75" strokeWidth="1.4" />
       </g>
     </Scene>
   );
