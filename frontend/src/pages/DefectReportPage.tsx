@@ -48,9 +48,10 @@ export default function DefectReportPage() {
   });
 
   const open = reports.data?.filter((r) => r.status === 'OPEN') ?? [];
+  const resolved = reports.data?.filter((r) => r.status === 'RESOLVED') ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-md space-y-6">
       <h1 className="text-2xl font-bold text-moos-800">🐛 Mängelmeldung</h1>
 
       {/* Mobil: große, daumenfreundliche Kurzform. */}
@@ -97,27 +98,29 @@ export default function DefectReportPage() {
         {open.length === 0 && <EmptyState emoji="✅" title="Alles heil" hint="Keine offenen Mängel." />}
         <div className="grid gap-2">
           {open.map((r) => (
-            <Card key={r.id} className="flex items-center gap-3 p-3">
-              <button
-                type="button"
-                onClick={() => setDetail(r)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
-              >
-                <span className="text-xl">{r.severity === 'DEFEKT' ? '💥' : '🩹'}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-moos-800">{r.title}</span>
-                  {r.description && <span className="block truncate text-xs text-moos-500">{r.description}</span>}
-                </span>
-              </button>
-              {canEdit && (
-                <Button variant="ghost" onClick={() => resolve.mutate(r.id)} disabled={resolve.isPending}>
-                  Erledigt
-                </Button>
-              )}
-            </Card>
+            <DefectRow
+              key={r.id}
+              report={r}
+              onOpen={() => setDetail(r)}
+              onResolve={canEdit ? () => resolve.mutate(r.id) : undefined}
+              resolving={resolve.isPending}
+            />
           ))}
         </div>
       </section>
+
+      {resolved.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            Erledigte Mängel ({resolved.length})
+          </h2>
+          <div className="grid gap-2">
+            {resolved.map((r) => (
+              <DefectRow key={r.id} report={r} resolved onOpen={() => setDetail(r)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {detail && (
         <DefectDetailDialog
@@ -128,6 +131,62 @@ export default function DefectReportPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Ein Mängel-Eintrag in der Liste. `resolved` graut den Eintrag aus (bleibt
+ * aber klickbar). `min-w-0` + `truncate` verhindern, dass lange Titel oder der
+ * „Erledigt"-Button die Karte über die Bildschirmbreite hinausschieben.
+ */
+function DefectRow({
+  report,
+  resolved = false,
+  onOpen,
+  onResolve,
+  resolving,
+}: {
+  report: DefectReport;
+  resolved?: boolean;
+  onOpen: () => void;
+  onResolve?: () => void;
+  resolving?: boolean;
+}) {
+  return (
+    <Card className={`flex min-w-0 items-center gap-3 p-3 ${resolved ? 'bg-gray-50 ring-gray-100' : ''}`}>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <span className={`text-xl ${resolved ? 'grayscale' : ''}`}>
+          {report.severity === 'DEFEKT' ? '💥' : '🩹'}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate font-medium ${resolved ? 'text-gray-400 line-through' : 'text-moos-800'}`}
+          >
+            {report.title}
+          </span>
+          {report.description && (
+            <span className={`block truncate text-xs ${resolved ? 'text-gray-300' : 'text-moos-500'}`}>
+              {report.description}
+            </span>
+          )}
+        </span>
+      </button>
+      {resolved ? (
+        <span className="shrink-0 text-xs font-semibold text-gray-400">✓ erledigt</span>
+      ) : (
+        onResolve && (
+          <div className="shrink-0">
+            <Button variant="ghost" onClick={onResolve} disabled={resolving}>
+              Erledigt
+            </Button>
+          </div>
+        )
+      )}
+    </Card>
   );
 }
 
