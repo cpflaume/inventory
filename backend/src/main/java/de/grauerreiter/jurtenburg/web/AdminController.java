@@ -7,6 +7,7 @@ import de.grauerreiter.jurtenburg.web.AuthDtos.CreateGroupRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.GroupDepotMapping;
 import de.grauerreiter.jurtenburg.web.AuthDtos.GroupSummary;
 import de.grauerreiter.jurtenburg.web.AuthDtos.MapGroupDepotRequest;
+import de.grauerreiter.jurtenburg.web.AuthDtos.SetDisplayNameRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.SetSystemRoleRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.SetUserStatusRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.UserSummary;
@@ -53,6 +54,12 @@ public class AdminController {
     @PostMapping("/users/{userId}/system-role")
     public UserSummary setSystemRole(@PathVariable UUID userId, @Valid @RequestBody SetSystemRoleRequest req) {
         return UserSummary.of(admin.setSystemRole(userId, req.systemRole()));
+    }
+
+    /** Anzeigenamen eines Benutzers setzen (leer = zurücksetzen auf keinen Anzeigenamen). */
+    @PostMapping("/users/{userId}/display-name")
+    public UserSummary setDisplayName(@PathVariable UUID userId, @Valid @RequestBody SetDisplayNameRequest req) {
+        return UserSummary.of(admin.setDisplayName(userId, req.displayName()));
     }
 
     /** Benutzer sperren/entsperren (bzw. Status setzen). */

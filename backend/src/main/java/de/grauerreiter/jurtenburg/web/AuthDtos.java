@@ -83,6 +83,9 @@ public final class AuthDtos {
     public record SetUserStatusRequest(@NotNull UserStatus status) {
     }
 
+    public record SetDisplayNameRequest(@Size(max = 100) String displayName) {
+    }
+
     public record GroupDepotMapping(UUID depotId, String depotName, DepotRole role) {
     }
 }

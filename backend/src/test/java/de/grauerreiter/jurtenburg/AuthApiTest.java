@@ -1,6 +1,7 @@
 package de.grauerreiter.jurtenburg;
 
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -135,6 +136,30 @@ class AuthApiTest extends AbstractIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(adminId, "Bootstrap-Admin erwartet");
         admin.perform(delete("/api/admin/users/{id}", adminId))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void adminCanEditDisplayName() throws Exception {
+        MockMvc admin = adminMockMvc(context);
+        MockMvc anon = anonymousMockMvc(context);
+
+        String userId = id(anon.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"name@example.org\",\"displayName\":\"Alt\",\"password\":\"Passwort1\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.displayName", is("Alt")))
+                .andReturn().getResponse().getContentAsString(), "id");
+
+        // Anzeigenamen ändern.
+        admin.perform(post("/api/admin/users/{id}/display-name", userId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Neuer Name\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName", is("Neuer Name")));
+
+        // Leer → zurückgesetzt auf keinen Anzeigenamen (null).
+        admin.perform(post("/api/admin/users/{id}/display-name", userId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"  \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName", is(nullValue())));
     }
 
     @Test

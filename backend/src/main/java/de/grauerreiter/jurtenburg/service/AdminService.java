@@ -67,6 +67,14 @@ public class AdminService {
     }
 
     @Transactional
+    public AppUser setDisplayName(UUID userId, String displayName) {
+        AppUser user = user(userId);
+        String trimmed = displayName == null ? null : displayName.trim();
+        user.setDisplayName(trimmed == null || trimmed.isEmpty() ? null : trimmed);
+        return users.save(user);
+    }
+
+    @Transactional
     public AppUser setSystemRole(UUID userId, SystemRole role) {
         AppUser user = user(userId);
         if (role != SystemRole.ADMIN) {

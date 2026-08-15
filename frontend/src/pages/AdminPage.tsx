@@ -32,6 +32,62 @@ function statusBadge(status: UserSummary['status']) {
   return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${map[status]}`}>{status}</span>;
 }
 
+function DisplayNameEditor({
+  user,
+  pending,
+  onSave,
+}: {
+  user: UserSummary;
+  pending: boolean;
+  onSave: (displayName: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(user.displayName ?? '');
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => {
+          setDraft(user.displayName ?? '');
+          setEditing(true);
+        }}
+        className="font-semibold text-moos-800 hover:underline"
+        title="Anzeigenamen bearbeiten"
+      >
+        {user.displayName || user.email || user.username} ✏️
+      </button>
+    );
+  }
+
+  const save = () => {
+    onSave(draft.trim());
+    setEditing(false);
+  };
+
+  return (
+    <span className="flex items-center gap-1">
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        maxLength={100}
+        placeholder="Anzeigename"
+        className="rounded-lg border border-moos-200 px-2 py-0.5 text-sm"
+      />
+      <Button onClick={save} disabled={pending}>
+        Speichern
+      </Button>
+      <Button variant="ghost" onClick={() => setEditing(false)}>
+        Abbrechen
+      </Button>
+    </span>
+  );
+}
+
 function UsersSection() {
   const qc = useQueryClient();
   const { user: me } = useAuth();
@@ -57,6 +113,11 @@ function UsersSection() {
     onSuccess: invalidate,
     onError: (e) => alert((e as Error).message),
   });
+  const setDisplayName = useMutation({
+    mutationFn: (v: { userId: string; displayName: string }) => api.setDisplayName(v.userId, v.displayName),
+    onSuccess: invalidate,
+    onError: (e) => alert((e as Error).message),
+  });
   const addGroup = useMutation({
     mutationFn: (v: { userId: string; groupId: string }) => api.addUserToGroup(v.userId, v.groupId),
     onSuccess: invalidate,
@@ -73,7 +134,11 @@ function UsersSection() {
         {users.data?.map((u) => (
           <Card key={u.id} className="p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-moos-800">{u.displayName || u.email || u.username}</span>
+              <DisplayNameEditor
+                user={u}
+                pending={setDisplayName.isPending}
+                onSave={(displayName) => setDisplayName.mutate({ userId: u.id, displayName })}
+              />
               <span className="text-xs text-moos-400">✉️ {u.email || u.username}</span>
               {statusBadge(u.status)}
               <span className="rounded-full bg-moos-50 px-2 py-0.5 text-xs text-moos-600">{u.provider}</span>
