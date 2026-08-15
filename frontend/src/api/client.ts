@@ -112,6 +112,8 @@ export const api = {
     http<UserSummary>(`/admin/users/${id}/system-role`, { method: 'POST', body: JSON.stringify({ systemRole }) }),
   setUserStatus: (id: string, status: UserStatus) =>
     http<UserSummary>(`/admin/users/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+  setDisplayName: (id: string, displayName: string) =>
+    http<UserSummary>(`/admin/users/${id}/display-name`, { method: 'POST', body: JSON.stringify({ displayName }) }),
   addUserToGroup: (id: string, groupId: string) =>
     http<UserSummary>(`/admin/users/${id}/groups`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   removeUserFromGroup: (id: string, groupId: string) =>
