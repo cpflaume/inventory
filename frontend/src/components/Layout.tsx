@@ -19,7 +19,7 @@ export default function Layout() {
 
   return (
     <div className="mx-auto min-h-screen max-w-5xl pb-24">
-      <header className="no-print sticky top-0 z-10 flex items-center gap-3 bg-moos-700 px-4 py-3 text-white shadow-md">
+      <header className="no-print sticky top-0 z-30 flex items-center gap-3 bg-moos-700 px-4 py-3 text-white shadow-md">
         <NavLink to="/" className="text-xl" title="Zur Lager-Auswahl">
           ⛺
         </NavLink>
@@ -34,7 +34,7 @@ export default function Layout() {
       </main>
 
       {/* Mobile-first: Tab-Leiste unten, daumenfreundlich. */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-5xl justify-around border-t border-moos-100 bg-white/95 py-2 backdrop-blur">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-5xl justify-around border-t border-moos-100 bg-white/95 py-2 backdrop-blur">
         {tabs.map((t) => (
           <NavLink
             key={t.to}
