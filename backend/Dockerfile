@@ -17,8 +17,10 @@ COPY gradle ./gradle
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
 COPY src ./src
+# Release-Tag in build-info.properties backen (→ /actuator/info). Ohne Arg: „dev".
+ARG APP_VERSION=dev
 RUN --mount=type=cache,target=/root/.gradle \
-    ./gradlew --no-daemon bootJar
+    APP_VERSION="$APP_VERSION" ./gradlew --no-daemon bootJar
 
 FROM eclipse-temurin:25-jre AS runtime
 WORKDIR /app

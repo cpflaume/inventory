@@ -37,6 +37,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE_API }}:${{ github.event.release.tag_name }}
+          build-args: |
+            APP_VERSION=${{ github.event.release.tag_name }}
           # Layer-Cache über Läufe hinweg (unveränderte Dependency-Layer werden
           # wiederverwendet statt neu gebaut).
           cache-from: type=gha,scope=inventory-api
@@ -62,6 +64,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE_FE }}:${{ github.event.release.tag_name }}
+          build-args: |
+            APP_VERSION=${{ github.event.release.tag_name }}
           cache-from: type=gha,scope=inventory-fe
           cache-to: type=gha,scope=inventory-fe,mode=max
 
