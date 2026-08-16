@@ -1,8 +1,11 @@
 name: Release
 
 # Auf ein veröffentlichtes GitHub-Release: beide Docker-Images MULTI-ARCH
-# (amd64 + arm64 für Oracle Cloud / Ampere) nach GHCR pushen und anschließend
-# das GitOps-Repo (Deploy) je Service per repository_dispatch anstoßen.
+# (amd64 + arm64 für Oracle Cloud / Ampere) nach GHCR pushen. Hier endet der
+# Scope dieses Repos beim Docker-Image (siehe CLAUDE.md). Das Deployment stößt
+# NICHT dieses Repo an — das GitOps-Repo (cpflaume/copf-demo-gitops) beobachtet
+# selbst die Releases dieses (öffentlichen) Repos und bumpt die Versionen. So
+# muss hier kein cross-repo Schreib-Token (früher GITOPS_DISPATCH_TOKEN) liegen.
 on:
   release:
     types: [published]
@@ -68,19 +71,3 @@ jobs:
             APP_VERSION=${{ github.event.release.tag_name }}
           cache-from: type=gha,scope=inventory-fe
           cache-to: type=gha,scope=inventory-fe,mode=max
-
-  deploy:
-    name: Trigger GitOps deploy
-    needs: [api, fe]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [inventory-api, inventory-fe]
-    steps:
-      - name: Dispatch to gitops (${{ matrix.service }})
-        run: |
-          curl -fsS -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITOPS_DISPATCH_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/cpflaume/copf-demo-gitops/dispatches \
-            -d '{"event_type":"deploy","client_payload":{"service":"${{ matrix.service }}","environment":"production","version":"${{ github.event.release.tag_name }}"}}'
