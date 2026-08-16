@@ -135,6 +135,51 @@ class WarehouseApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void defectReportEscalatesItemConditionFlag() throws Exception {
+        MockMvc mvc = mvc();
+        String depotId = createDepot("Ampel-Lager");
+
+        String itemBody = mvc.perform(post("/api/depots/{d}/items", depotId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Hammer\",\"quantity\":1}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.conditionFlag", is("GREEN")))
+                .andReturn().getResponse().getContentAsString();
+        String itemId = json.readTree(itemBody).get("id").asText();
+
+        // MACKE hebt die Ampel auf GELB.
+        mvc.perform(post("/api/depots/{d}/defect-reports", depotId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Stiel locker\",\"severity\":\"MACKE\",\"itemId\":\"" + itemId + "\"}"))
+                .andExpect(status().isCreated());
+        assertItemFlag(mvc, depotId, itemId, "YELLOW");
+
+        // DEFEKT verschärft weiter auf ROT.
+        mvc.perform(post("/api/depots/{d}/defect-reports", depotId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Kopf abgebrochen\",\"severity\":\"DEFEKT\",\"itemId\":\"" + itemId + "\"}"))
+                .andExpect(status().isCreated());
+        assertItemFlag(mvc, depotId, itemId, "RED");
+
+        // Eine weitere MACKE schwächt ROT nicht ab.
+        mvc.perform(post("/api/depots/{d}/defect-reports", depotId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Kratzer\",\"severity\":\"MACKE\",\"itemId\":\"" + itemId + "\"}"))
+                .andExpect(status().isCreated());
+        assertItemFlag(mvc, depotId, itemId, "RED");
+    }
+
+    private void assertItemFlag(MockMvc mvc, String depotId, String itemId, String flag) throws Exception {
+        JsonNode items = json.readTree(mvc.perform(get("/api/depots/{d}/items", depotId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        String actual = null;
+        for (JsonNode it : items) {
+            if (it.get("id").asText().equals(itemId)) {
+                actual = it.get("conditionFlag").asText();
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(flag, actual);
+    }
+
+    @Test
     void tenantIsolationHidesForeignDepotEntities() throws Exception {
         MockMvc mvc = mvc();
         String depotA = createDepot("Lager-A");

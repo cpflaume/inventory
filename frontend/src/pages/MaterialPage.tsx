@@ -5,7 +5,7 @@ import { api, type ItemInput } from '../api/client';
 import type { Item } from '../api/types';
 import { Button, Card, EmptyState } from '../components/ui';
 import { ItemDialog, ItemForm, ItemRow } from '../components/items';
-import { emptyItem } from '../components/itemModel';
+import { collectCategories, emptyItem } from '../components/itemModel';
 import { type LocationTarget, targetPatch } from '../components/locationTarget';
 import { useAuth } from '../auth/AuthContext';
 
@@ -30,6 +30,7 @@ export default function MaterialPage() {
     queryFn: () => api.listLocations(depotId),
   });
   const boxes = locations.data?.filter((l) => l.type === 'BOX') ?? [];
+  const categories = collectCategories(items.data ?? []);
 
   const create = useMutation({
     mutationFn: () =>
@@ -61,6 +62,7 @@ export default function MaterialPage() {
             value={form}
             onChange={setForm}
             boxes={boxes}
+            categories={categories}
             fixedTarget={fixedTarget}
             onClearTarget={fixedTarget ? clearTarget : undefined}
           />

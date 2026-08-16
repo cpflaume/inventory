@@ -64,7 +64,12 @@ public class DefectReportController {
         report.setLocationId(req.locationId());
         report.setDescription(req.description());
         report.setReporter(req.reporter());
-        return DefectReportResponse.of(reports.save(report));
+        DefectReportResponse saved = DefectReportResponse.of(reports.save(report));
+        // Ein Mangel am konkreten Teil zieht dessen Zustands-Ampel nach.
+        if (req.itemId() != null) {
+            itemService.escalateForDefect(depotId, req.itemId(), req.severity());
+        }
+        return saved;
     }
 
     /** Mangel als behoben markieren. */

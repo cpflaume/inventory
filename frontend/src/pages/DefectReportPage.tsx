@@ -39,6 +39,8 @@ export default function DefectReportPage() {
       setSeverity('MACKE');
       qc.invalidateQueries({ queryKey: ['defects', depotId] });
       qc.invalidateQueries({ queryKey: ['warehouse', depotId] });
+      // Ein Mangel am Teil zieht dessen Ampel nach — Item-Listen neu laden.
+      qc.invalidateQueries({ queryKey: ['items', depotId] });
     },
   });
 
