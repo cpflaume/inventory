@@ -5,12 +5,20 @@ plugins {
 }
 
 group = 'de.grauerreiter'
-version = '0.0.1'
+// Version = Release-Tag, zur Build-Zeit über APP_VERSION hereingereicht
+// (backend/Dockerfile-ARG, gefüttert aus release.yml). Lokal/ohne Release: „dev".
+version = System.getenv('APP_VERSION') ?: 'dev'
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
+}
+
+// Erzeugt META-INF/build-info.properties → /actuator/info liefert die Version
+// (build.version), sodass die laufende API ihren Release-Tag ausweist.
+springBoot {
+    buildInfo()
 }
 
 repositories {
