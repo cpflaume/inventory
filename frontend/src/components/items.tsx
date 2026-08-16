@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ItemInput } from '../api/client';
 import type { ConditionFlag, DefectReport, Item, Location } from '../api/types';
 import { Button, Card, ConditionDot, Modal, inputClass } from './ui';
 import { type LocationTarget, targetLabel, targetPatch } from './locationTarget';
-import { emptyItem, itemToInput, normalizeItem } from './itemModel';
+import { collectCategories, emptyItem, itemToInput, normalizeItem } from './itemModel';
 
 const CELL_TOKEN = '__cell__';
 
@@ -17,16 +17,20 @@ export function ItemForm({
   value,
   onChange,
   boxes,
+  categories = [],
   fixedTarget,
   onClearTarget,
 }: {
   value: ItemInput;
   onChange: (v: ItemInput) => void;
   boxes: Location[];
+  /** Bereits vergebene Kategorien als Dropdown-Vorschläge (freie Eingabe bleibt möglich). */
+  categories?: string[];
   fixedTarget?: LocationTarget | null;
   /** Wird gesetzt, darf der feste Lagerort aufgehoben werden (× am Chip). */
   onClearTarget?: () => void;
 }) {
+  const categoryListId = useId();
   const boxIds = new Set(boxes.map((b) => b.id));
   const isLooseCell = !!value.locationId && !boxIds.has(value.locationId) && value.row != null;
   const selectValue =
@@ -52,8 +56,16 @@ export function ItemForm({
           value={value.category ?? ''}
           onChange={(e) => onChange({ ...value, category: e.target.value })}
           placeholder="Kategorie"
+          list={categoryListId}
           className={`${inputClass} min-w-0 flex-1`}
         />
+        {categories.length > 0 && (
+          <datalist id={categoryListId}>
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        )}
         <input
           type="number"
           min={0}
@@ -212,6 +224,13 @@ export function ItemDialog({
   });
   const boxes = locations.data?.filter((l) => l.type === 'BOX') ?? [];
 
+  const items = useQuery({
+    queryKey: ['items', depotId],
+    queryFn: () => api.listItems(depotId),
+    enabled: editing,
+  });
+  const categories = collectCategories(items.data ?? []);
+
   const defects = useQuery({
     queryKey: ['defects', depotId],
     queryFn: () => api.listDefects(depotId),
@@ -280,7 +299,13 @@ export function ItemDialog({
     <Modal title={title} onClose={onClose} footer={footer}>
       {editing ? (
         <div className="space-y-3">
-          <ItemForm value={form} onChange={setForm} boxes={boxes} fixedTarget={isNew ? fixedTarget : null} />
+          <ItemForm
+            value={form}
+            onChange={setForm}
+            boxes={boxes}
+            categories={categories}
+            fixedTarget={isNew ? fixedTarget : null}
+          />
           {save.isError && <p className="text-sm text-red-600">{(save.error as Error).message}</p>}
         </div>
       ) : (

@@ -19,6 +19,19 @@ export function itemToInput(item: Item): ItemInput {
   };
 }
 
+/**
+ * Bereits vergebene Kategorien (eindeutig, alphabetisch) als Vorschläge fürs
+ * Dropdown — hält die Kategorien konsistent, erlaubt aber weiter freie Eingabe.
+ */
+export function collectCategories(items: Item[]): string[] {
+  const seen = new Set<string>();
+  for (const item of items) {
+    const cat = item.category?.trim();
+    if (cat) seen.add(cat);
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b, 'de'));
+}
+
 /** Formular auf gemeinsame Trim-Regeln bringen, bevor es zum Backend geht. */
 export function normalizeItem(form: ItemInput): ItemInput {
   return {

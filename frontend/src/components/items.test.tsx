@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ItemDialog } from './items';
 import type { DefectReport, Item, Location } from '../api/types';
@@ -13,6 +14,11 @@ const item: Item = {
   note: 'Naht prüfen',
   locationId: 'b1',
 };
+
+const items: Item[] = [
+  item,
+  { id: 'i2', name: 'Zeltnagel', category: 'Kleinteil', quantity: 40, conditionFlag: 'GREEN' },
+];
 
 const boxes: Location[] = [{ id: 'b1', type: 'BOX', label: 'Kiste 1' }];
 const defects: DefectReport[] = [
@@ -30,6 +36,7 @@ vi.mock('../api/client', () => ({
   api: {
     listLocations: () => Promise.resolve(boxes),
     listDefects: () => Promise.resolve(defects),
+    listItems: () => Promise.resolve(items),
   },
 }));
 
@@ -63,5 +70,17 @@ describe('ItemDialog (Gegenstand-Detail)', () => {
     renderDialog(true);
     expect(screen.getByRole('button', { name: /Bearbeiten/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Löschen/ })).toBeInTheDocument();
+  });
+
+  it('bietet vorhandene Kategorien als Dropdown-Vorschläge beim Bearbeiten', async () => {
+    renderDialog(true);
+    await userEvent.click(screen.getByRole('button', { name: /Bearbeiten/ }));
+
+    const input = await screen.findByPlaceholderText('Kategorie');
+    const listId = input.getAttribute('list');
+    expect(listId).toBeTruthy();
+    const datalist = document.getElementById(listId!);
+    expect(datalist?.querySelector('option[value="Zelt"]')).toBeTruthy();
+    expect(datalist?.querySelector('option[value="Kleinteil"]')).toBeTruthy();
   });
 });

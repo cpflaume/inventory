@@ -4,6 +4,7 @@ import de.grauerreiter.jurtenburg.domain.ConditionFlag;
 import de.grauerreiter.jurtenburg.domain.Item;
 import de.grauerreiter.jurtenburg.domain.Location;
 import de.grauerreiter.jurtenburg.domain.LocationType;
+import de.grauerreiter.jurtenburg.domain.Severity;
 import de.grauerreiter.jurtenburg.repo.ItemRepository;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.BusinessRuleException;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.NotFoundException;
@@ -58,6 +59,22 @@ public class ItemService {
     @Transactional
     public void delete(UUID depotId, UUID itemId) {
         items.delete(getInDepot(depotId, itemId));
+    }
+
+    /**
+     * Passt die Zustands-Ampel eines Items an einen neu gemeldeten Mangel an:
+     * MACKE hebt (mindestens) auf GELB, DEFEKT auf ROT. Es wird nur verschärft,
+     * nie abgeschwächt — eine kleine Macke macht ein bereits defektes Teil nicht
+     * wieder heil.
+     */
+    @Transactional
+    public void escalateForDefect(UUID depotId, UUID itemId, Severity severity) {
+        ConditionFlag target = severity == Severity.DEFEKT ? ConditionFlag.RED : ConditionFlag.YELLOW;
+        Item item = getInDepot(depotId, itemId);
+        if (target.ordinal() > item.getConditionFlag().ordinal()) {
+            item.setConditionFlag(target);
+            items.save(item);
+        }
     }
 
     private void apply(UUID depotId, Item item, ItemRequest req) {
