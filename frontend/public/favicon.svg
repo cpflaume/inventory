@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Jurtenburg – kleines Pfadfinderzelt (A-Frame) -->
+  <!-- Boden -->
+  <rect x="10" y="80" width="80" height="6" rx="3" fill="#8a5a2b"/>
+  <!-- Zeltkorpus -->
+  <path d="M50 14 L14 82 H86 Z" fill="#436e2b"/>
+  <!-- Rechte Sonnenseite (heller) -->
+  <path d="M50 14 L86 82 H50 Z" fill="#5c8a3c"/>
+  <!-- Eingang / Türöffnung -->
+  <path d="M50 44 L34 82 H66 Z" fill="#2c4a1c"/>
+  <!-- Aufgeschlagene Türklappen -->
+  <path d="M50 44 L34 82 L41 82 Z" fill="#365d24"/>
+  <path d="M50 44 L66 82 L59 82 Z" fill="#365d24"/>
+  <!-- Firstspitze / Fahnenmast -->
+  <line x1="50" y1="14" x2="50" y2="6" stroke="#8a5a2b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M50 6 L62 10 L50 14 Z" fill="#c0392b"/>
+</svg>
