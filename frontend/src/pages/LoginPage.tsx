@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { api } from '../api/client';
 import { AppVersion, Button, Card } from '../components/ui';
 
 export default function LoginPage() {
@@ -10,6 +11,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [oidcLoginUrl, setOidcLoginUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Nur anzeigen, wenn das Backend OIDC aktiviert hat.
+    api
+      .oidcConfig()
+      .then((cfg) => setOidcLoginUrl(cfg.enabled ? cfg.loginUrl : null))
+      .catch(() => setOidcLoginUrl(null));
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +64,21 @@ export default function LoginPage() {
             Anmelden
           </Button>
         </form>
+        {oidcLoginUrl && (
+          <>
+            <div className="my-4 flex items-center gap-3 text-xs text-moos-400">
+              <span className="h-px flex-1 bg-moos-100" />
+              oder
+              <span className="h-px flex-1 bg-moos-100" />
+            </div>
+            <a
+              href={oidcLoginUrl}
+              className="block w-full rounded-xl bg-moos-100 px-4 py-2 text-center text-sm font-semibold text-moos-800 transition hover:bg-moos-200"
+            >
+              Mit Nextcloud anmelden
+            </a>
+          </>
+        )}
       </Card>
       <p className="mt-4 text-center text-sm text-moos-500">
         Noch kein Konto?{' '}

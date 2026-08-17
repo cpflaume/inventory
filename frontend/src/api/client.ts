@@ -13,6 +13,7 @@ import type {
   Kit,
   Location,
   MeResponse,
+  OidcConfig,
   Severity,
   SystemRole,
   UserStatus,
@@ -104,6 +105,7 @@ export const api = {
   login: (body: { email: string; password: string }) =>
     http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => http<MeResponse>('/auth/me'),
+  oidcConfig: () => http<OidcConfig>('/auth/oidc/config'),
 
   // ---- Admin ----
   adminUsers: () => http<UserSummary[]>('/admin/users'),

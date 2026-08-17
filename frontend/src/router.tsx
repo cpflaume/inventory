@@ -10,6 +10,7 @@ import BoxLabelPrintPage from './pages/print/BoxLabelPrintPage';
 import KitPrintPage from './pages/print/KitPrintPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import OidcCallbackPage from './pages/OidcCallbackPage';
 import AdminPage from './pages/AdminPage';
 import { RequireAdmin, RequireAuth } from './auth/guards';
 
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
   // Öffentlich
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/auth/callback', element: <OidcCallbackPage /> },
 
   // Angemeldet
   {

@@ -12,6 +12,8 @@ interface AuthState {
   /** Darf der Benutzer im Lager bearbeiten (EDITOR oder ADMIN)? */
   canEdit: (depotId: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Übernimmt ein extern (OIDC) ausgestelltes App-Token und lädt den Benutzer. */
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -59,6 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadMe();
   };
 
+  const loginWithToken = async (token: string) => {
+    setToken(token);
+    await loadMe();
+  };
+
   const logout = () => {
     clearToken();
     setUser(null);
@@ -80,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return role === 'EDITOR' || role === 'ADMIN';
         },
         login,
+        loginWithToken,
         logout,
         refresh: loadMe,
       };

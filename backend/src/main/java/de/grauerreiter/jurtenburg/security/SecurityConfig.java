@@ -21,7 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, OidcProperties.class})
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
@@ -63,6 +63,8 @@ public class SecurityConfig {
                         .accessDeniedHandler((req, res, e) -> writeError(res, 403, "Kein Zugriff")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        // OIDC-Login-Flow (Weiterleitung zum IdP, Callback) und der Status fürs Frontend.
+                        .requestMatchers(HttpMethod.GET, "/api/auth/oidc/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

@@ -59,4 +59,32 @@ public class JwtService {
     public UUID userId(Claims claims) {
         return UUID.fromString(claims.get("userId", String.class));
     }
+
+    /**
+     * Signiert ein kurzlebiges, zustandsloses OIDC-State-Token (im Cookie transportiert). Es bindet
+     * den Login-Start an den Callback: State (CSRF), Nonce (Replay) und den PKCE-Code-Verifier.
+     * Der {@code typ}-Claim verhindert, dass es als App-Login-Token missbraucht werden kann.
+     */
+    public String signOidcState(String state, String nonce, String codeVerifier, long ttlMs) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .issuer(props.getIssuer())
+                .claim("typ", "oidc_state")
+                .claim("state", state)
+                .claim("nonce", nonce)
+                .claim("cv", codeVerifier)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + ttlMs))
+                .signWith(key)
+                .compact();
+    }
+
+    /** Parst und verifiziert ein OIDC-State-Token (Signatur + Ablauf + {@code typ}). */
+    public Claims parseOidcState(String token) {
+        Claims claims = parse(token);
+        if (!"oidc_state".equals(claims.get("typ", String.class))) {
+            throw new IllegalArgumentException("Kein OIDC-State-Token.");
+        }
+        return claims;
+    }
 }
