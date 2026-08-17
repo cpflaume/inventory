@@ -79,6 +79,11 @@ public class OidcProperties {
         requireSet("app.oidc.client-id", clientId);
         requireSet("app.oidc.client-secret", clientSecret);
         requireSet("app.oidc.redirect-uri", redirectUri);
+        // HTTPS erzwingen: Discovery/JWKS/Token-Austausch (Issuer) und der Code-Rückweg
+        // (Redirect-URI) laufen sonst im Klartext und wären MITM-/Abfangbar. Loopback bleibt
+        // erlaubt (lokale Entwicklung/Tests).
+        requireHttpsOrLoopback("app.oidc.issuer-uri", issuerUri);
+        requireHttpsOrLoopback("app.oidc.redirect-uri", redirectUri);
         if (!scopeList().contains("openid")) {
             throw new IllegalStateException("app.oidc.scopes muss 'openid' enthalten.");
         }
@@ -88,6 +93,20 @@ public class OidcProperties {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
                     "OIDC ist aktiviert (app.oidc.enabled=true), aber " + name + " ist nicht gesetzt.");
+        }
+    }
+
+    private static void requireHttpsOrLoopback(String name, String value) {
+        URI uri;
+        try {
+            uri = URI.create(value);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(name + " ist keine gültige URL: " + value);
+        }
+        String host = uri.getHost();
+        boolean loopback = "localhost".equals(host) || "127.0.0.1".equals(host) || "[::1]".equals(host);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) && !loopback) {
+            throw new IllegalStateException(name + " muss HTTPS verwenden (außer localhost/127.0.0.1): " + value);
         }
     }
 
