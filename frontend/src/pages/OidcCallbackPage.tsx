@@ -7,7 +7,7 @@ import { AppVersion, Card } from '../components/ui';
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: 'Die Anmeldung ist abgelaufen oder ungültig. Bitte erneut versuchen.',
   invalid_request: 'Die Antwort des Anmeldedienstes war unvollständig.',
-  oidc_failed: 'Die Anmeldung über Nextcloud ist fehlgeschlagen.',
+  oidc_failed: 'Die Anmeldung über die Grauer Reiter Wolke ist fehlgeschlagen.',
 };
 
 /**

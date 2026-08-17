@@ -75,7 +75,7 @@ export default function LoginPage() {
               href={oidcLoginUrl}
               className="block w-full rounded-xl bg-moos-100 px-4 py-2 text-center text-sm font-semibold text-moos-800 transition hover:bg-moos-200"
             >
-              Mit Nextcloud anmelden
+              Login mit Grauer Reiter Wolke
             </a>
           </>
         )}
