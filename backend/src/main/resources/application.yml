@@ -49,3 +49,19 @@ app:
     # Der Benutzername ist zugleich die Login-E-Mail.
     username: ${APP_ADMIN_USERNAME:admin@jurtenburg.local}
     password: ${APP_ADMIN_PASSWORD:admin12345}
+  oidc:
+    # Single-Sign-On (z.B. Nextcloud). Standard: AUS — die App läuft dann rein lokal.
+    # Zum Aktivieren OIDC_ENABLED=true und die vier Pflichtwerte unten setzen.
+    enabled: ${OIDC_ENABLED:false}
+    # Basis-URL des IdP (ohne /.well-known/...); zugleich erwarteter iss-Claim.
+    issuer-uri: ${OIDC_ISSUER_URI:}
+    client-id: ${OIDC_CLIENT_ID:}
+    # Vom IdP vergeben; in Produktion als Secret injizieren (nie ins Repo).
+    client-secret: ${OIDC_CLIENT_SECRET:}
+    # Muss beim IdP als Redirect-URI hinterlegt sein (öffentliche Callback-URL dieser App).
+    redirect-uri: ${OIDC_REDIRECT_URI:}
+    scopes: ${OIDC_SCOPES:openid profile email groups}
+    groups-claim: ${OIDC_GROUPS_CLAIM:groups}
+    auto-create-groups: ${OIDC_AUTO_CREATE_GROUPS:true}
+    # Ziel im Frontend nach Login (Token/Fehler im URL-Fragment). Leer = aus redirect-uri abgeleitet.
+    post-login-redirect-uri: ${OIDC_POST_LOGIN_REDIRECT_URI:}

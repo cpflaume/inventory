@@ -15,9 +15,11 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
 - **Auth/Rechte** (`security/`): App-JWT (HS256, jjwt) über `JwtAuthenticationFilter`; Principal
   `AppUserDetails`. Autorisierung auf Lager-Ebene zentral im `DepotAccessInterceptor` (`/api/depots/**`)
   via `AccessService` (Gruppe→Lager-Mapping, höchste Rolle gewinnt; Plattform-Admin sieht alles).
-  `/api/admin/**` = Plattform-Admin. Mehrere Auth-Provider: jeder mündet im selben App-JWT; OIDC dockt
-  über `UserProvisioningService` an. Benutzer: `AppUser` (LOCAL/OIDC, PENDING→ACTIVE), `UserGroup`,
-  `GroupDepotAccess`.
+  `/api/admin/**` = Plattform-Admin. Mehrere Auth-Provider: jeder mündet im selben App-JWT. OIDC
+  (Authorization Code + PKCE, zustandslos über signiertes State-Cookie) läuft über `OidcService`
+  (Discovery + JWKS-Verifikation) → `OidcAuthController` (`/api/auth/oidc/login|callback|config`) →
+  `UserProvisioningService`; Standard AUS (`app.oidc.enabled`), Setup siehe `docs/oidc.md`. Benutzer:
+  `AppUser` (LOCAL/OIDC, PENDING→ACTIVE), `UserGroup`, `GroupDepotAccess`.
 - **Aufräumorte**: `Location` mit Typ `SHELF` (Fach-Raster `gridRows`×`gridCols`, 2×1…8×8) oder
   `BOX` (im Regalfach via `parentLocationId`+`row`/`col`, sonst freistehend). Fach-Regel
   „Kiste XOR lose Items" wird in `LocationService.assertCellFree` durchgesetzt — beim Erweitern
@@ -50,5 +52,5 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
   `record_all_videos` erzwingt die Aufzeichnung aller Videos.
 
 ## Nicht in v1 (Folge-Features)
-Nextcloud-OIDC/SSO, aktiv zusammengestellte Packliste (Soll/Ist), Foto-Anhänge an Mängeln.
-Siehe `docs/nextcloud-evaluation.md`.
+Aktiv zusammengestellte Packliste (Soll/Ist), Foto-Anhänge an Mängeln.
+Siehe `docs/nextcloud-evaluation.md`. (Nextcloud-OIDC/SSO ist inzwischen verdrahtet — `docs/oidc.md`.)

@@ -14,13 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Bereitstellung/Aktualisierung von Benutzern aus einem <em>externen</em> Identitätsprovider
- * (OIDC). Genau diese Naht macht „mehrere Auth-Provider" konkret: ein künftiger
- * OIDC-Callback verifiziert das IdP-Token und ruft {@link #provisionExternalUser} auf —
- * upsert des Benutzers + Synchronisierung der Gruppen aus den Claims. Danach stellt der
+ * (OIDC). Genau diese Naht macht „mehrere Auth-Provider" konkret: der
+ * {@code de.grauerreiter.jurtenburg.web.OidcAuthController} verifiziert das IdP-Token
+ * ({@code de.grauerreiter.jurtenburg.security.OidcService}) und ruft {@link #provisionExternalUser}
+ * auf — upsert des Benutzers + Synchronisierung der Gruppen aus den Claims. Danach stellt der
  * Aufrufer dasselbe App-JWT aus wie beim lokalen Login.
- *
- * <p>Die eigentliche OIDC-Token-Verifikation (JWKS) ist noch nicht verdrahtet; sie kommt als
- * eigener Controller/Filter dazu und nutzt diese Methode.</p>
  */
 @Service
 public class UserProvisioningService {

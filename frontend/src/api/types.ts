@@ -48,6 +48,12 @@ export interface AuthResponse {
   user: UserSummary;
 }
 
+/** Öffentlicher OIDC-Status: ob SSO aktiv ist und wohin der Login-Start zeigt. */
+export interface OidcConfig {
+  enabled: boolean;
+  loginUrl: string;
+}
+
 export interface GroupDepotMapping {
   depotId: string;
   depotName: string;
