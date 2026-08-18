@@ -73,11 +73,23 @@ class OidcServiceDiscoveryTest {
     }
 
     @Test
-    void nonJsonBodyFailsWithClearMessage() throws IOException {
+    void discoveryFollowsRedirectFromWellKnown() throws IOException {
         idp = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         String issuer = "http://127.0.0.1:" + idp.getAddress().getPort();
-        idp.createContext("/.well-known/openid-configuration",
-                ex -> respond(ex, "text/html", "<html><body>Login</body></html>"));
+        // Wie Nextcloud: /.well-known/openid-configuration leitet auf den echten Endpunkt
+        // (…/index.php/.well-known/…) um; nur dort steht das JSON. Der HTTP-Client muss folgen.
+        idp.createContext("/.well-known/openid-configuration", ex -> {
+            ex.getResponseHeaders().add("Location", "/index.php/.well-known/openid-configuration");
+            ex.sendResponseHeaders(302, -1);
+            ex.close();
+        });
+        idp.createContext("/index.php/.well-known/openid-configuration", ex -> respond(ex, "application/json", """
+                {
+                  "issuer": "%1$s",
+                  "authorization_endpoint": "%1$s/authorize",
+                  "token_endpoint": "%1$s/token",
+                  "jwks_uri": "%1$s/jwks"
+                }""".formatted(issuer)));
         idp.start();
 
         OidcProperties props = new OidcProperties();
@@ -88,7 +100,31 @@ class OidcServiceDiscoveryTest {
         props.setRedirectUri("http://localhost/api/auth/oidc/callback");
         OidcService service = new OidcService(props);
 
-        assertThrows(IllegalStateException.class, service::buildAuthorizationRequest);
+        String url = service.buildAuthorizationRequest().url();
+
+        assertTrue(url.contains("/authorize"),
+                () -> "authorization_endpoint nach Redirect-Folgen erwartet: " + url);
+    }
+
+    @Test
+    void htmlBodyFailsWithActionableMessage() throws IOException {
+        idp = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        String issuer = "http://127.0.0.1:" + idp.getAddress().getPort();
+        idp.createContext("/.well-known/openid-configuration",
+                ex -> respond(ex, "text/html", "<!DOCTYPE html><html><body>Login</body></html>"));
+        idp.start();
+
+        OidcProperties props = new OidcProperties();
+        props.setEnabled(true);
+        props.setIssuerUri(issuer);
+        props.setClientId("jurtenburg-test");
+        props.setClientSecret("secret");
+        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
+        OidcService service = new OidcService(props);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, service::buildAuthorizationRequest);
+        // Statt roher Jackson-Fehlermeldung ein Hinweis auf HTML.
+        assertTrue(ex.getMessage().contains("HTML"), () -> "Hinweis auf HTML erwartet: " + ex.getMessage());
     }
 
     private static void respond(HttpExchange ex, String contentType, String body) throws IOException {
