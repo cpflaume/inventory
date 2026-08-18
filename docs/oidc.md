@@ -50,3 +50,10 @@ Die Redirect-URI muss exakt stimmen (`https`, kein Trailing-Slash) und liegt bew
 
 Bei `OIDC_ENABLED=true` und fehlender Pflicht-Variable startet die App nicht (fail-fast).
 Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/oidc.md`.
+
+## Troubleshooting
+
+- **Discovery/Token mit `Content-Type: text/html`:** Nextcloud liefert
+  `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
+  aber `text/html`. `OidcService` parst diese Antworten selbst (JSON-Body statt Konverter-Auswahl
+  über den `Content-Type`), sodass der Login trotzdem funktioniert.
