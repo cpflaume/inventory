@@ -40,6 +40,7 @@ Die Redirect-URI muss exakt stimmen (`https`, kein Trailing-Slash) und liegt bew
 |---|---|---|
 | `OIDC_ENABLED` | – | `true` aktiviert OIDC (Default `false`). |
 | `OIDC_ISSUER_URI` | ✓ | Basis-URL der Nextcloud (z. B. `https://wolke.grauer-reiter.de`, ohne `/.well-known/...`); erwarteter `iss`. Muss HTTPS sein. |
+| `OIDC_CONFIGURATION_URI` | – | Explizite Discovery-URL, falls der IdP das Dokument **nicht** unter `${issuer}/.well-known/openid-configuration` ausliefert. Leer = spec-konform aus dem Issuer abgeleitet. Bei Nextcloud i. d. R. `${issuer}/index.php/apps/oidc/openid-configuration`. Muss HTTPS sein. |
 | `OIDC_CLIENT_ID` | ✓ | Client-ID aus dem IdP. |
 | `OIDC_CLIENT_SECRET` | ✓ | Client-Secret aus dem IdP — **Secret, nie ins Repo**. |
 | `OIDC_REDIRECT_URI` | ✓ | Callback-URL, identisch zur Redirect-URI im IdP. |
@@ -57,3 +58,9 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
   `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
   aber `text/html`. `OidcService` parst diese Antworten selbst (JSON-Body statt Konverter-Auswahl
   über den `Content-Type`), sodass der Login trotzdem funktioniert.
+- **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Dann antwortet unter
+  `${issuer}/.well-known/openid-configuration` gar nicht der OIDC-Provider, sondern die Nextcloud-
+  Oberfläche (Login-/Startseite) — die Well-Known-Route ist hinter dem Reverse-Proxy nicht auf den
+  `oidc`-Endpunkt verdrahtet. Abhilfe: `OIDC_CONFIGURATION_URI` direkt auf das Metadaten-Dokument
+  setzen, bei Nextcloud i. d. R. `${issuer}/index.php/apps/oidc/openid-configuration`. Der `iss`-Claim
+  (und damit `OIDC_ISSUER_URI`) bleibt unverändert die Basis-URL.

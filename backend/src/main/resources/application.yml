@@ -55,6 +55,10 @@ app:
     enabled: ${OIDC_ENABLED:false}
     # Basis-URL des IdP (ohne /.well-known/...); zugleich erwarteter iss-Claim.
     issuer-uri: ${OIDC_ISSUER_URI:}
+    # Optional: explizite Discovery-URL, falls der IdP das Dokument nicht unter
+    # ${issuer}/.well-known/openid-configuration ausliefert (Nextcloud oft
+    # /index.php/apps/oidc/openid-configuration). Leer = aus issuer-uri abgeleitet.
+    configuration-uri: ${OIDC_CONFIGURATION_URI:}
     client-id: ${OIDC_CLIENT_ID:}
     # Vom IdP vergeben; in Produktion als Secret injizieren (nie ins Repo).
     client-secret: ${OIDC_CLIENT_SECRET:}
