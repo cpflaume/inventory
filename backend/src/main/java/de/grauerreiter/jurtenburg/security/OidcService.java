@@ -1,5 +1,7 @@
 package de.grauerreiter.jurtenburg.security;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.UnauthorizedException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -35,6 +37,7 @@ public class OidcService {
 
     private final OidcProperties props;
     private final RestClient rest;
+    private final ObjectMapper json = new ObjectMapper();
     private final SecureRandom random = new SecureRandom();
 
     private volatile Metadata metadata;
@@ -80,12 +83,11 @@ public class OidcService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Metadata discover() {
         String url = props.getIssuerUri() + "/.well-known/openid-configuration";
         Map<String, Object> doc;
         try {
-            doc = rest.get().uri(url).retrieve().body(Map.class);
+            doc = getJson(url);
         } catch (Exception ex) {
             throw new IllegalStateException("OIDC-Discovery fehlgeschlagen (" + url + "): " + ex.getMessage(), ex);
         }
@@ -176,15 +178,39 @@ public class OidcService {
                 groups(idToken));
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> postForm(String endpoint, MultiValueMap<String, String> form) {
-        return rest.post().uri(endpoint)
+        String body = rest.post().uri(endpoint)
                 .header(HttpHeaders.AUTHORIZATION, basicAuth())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(form)
                 .retrieve()
-                .body(Map.class);
+                .body(String.class);
+        return parseJson(body, endpoint);
+    }
+
+    /**
+     * Holt eine JSON-Ressource und parst sie selbst. Bewusst nicht über die HttpMessageConverter:
+     * manche IdP (u.a. Nextcloud) liefern Discovery/Token mit {@code Content-Type: text/html} aus,
+     * wofür Spring sonst keinen Konverter auf {@code Map} findet und die Anfrage scheitert.
+     */
+    private Map<String, Object> getJson(String url) {
+        String body = rest.get().uri(url)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(String.class);
+        return parseJson(body, url);
+    }
+
+    private Map<String, Object> parseJson(String body, String source) {
+        if (body == null || body.isBlank()) {
+            throw new IllegalStateException("Leere Antwort von " + source);
+        }
+        try {
+            return json.readValue(body, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception ex) {
+            throw new IllegalStateException("Antwort von " + source + " ist kein JSON: " + ex.getMessage(), ex);
+        }
     }
 
     private String basicAuth() {
