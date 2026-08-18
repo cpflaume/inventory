@@ -54,9 +54,12 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
 ## Troubleshooting
 
 - **Discovery/Token mit `Content-Type: text/html`:** Nextcloud liefert
-  `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
-  aber `text/html`. `OidcService` parst diese Antworten selbst (JSON-Body statt Konverter-Auswahl
-  über den `Content-Type`), sodass der Login trotzdem funktioniert.
+  `/.well-known/openid-configuration` (und teils die Token-Antwort) als valides JSON aus, deklariert
+  dabei aber `text/html` — entgegen RFC 8414 §3.2 (Provider-Metadaten) und RFC 6749 §5.1
+  (Token-Antwort), die beide `application/json` verlangen. Der Fehler liegt also serverseitig im
+  IdP; der Client kann ihn nur tolerieren. In `OidcService` erledigt das ein eigener
+  JSON-Konverter (`MislabeledJsonConverter`), der die Antwort unabhängig vom `Content-Type` als JSON
+  liest — die normale typisierte Deserialisierung (`.body(JSON_MAP)`) greift dadurch trotzdem.
 - **Redirect auf `…/index.php/.well-known/…`:** Nextcloud stellt die Discovery spec-konform unter
   `${issuer}/.well-known/openid-configuration` bereit, leitet dort aber per HTTP-Redirect auf den
   tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. `OidcService`

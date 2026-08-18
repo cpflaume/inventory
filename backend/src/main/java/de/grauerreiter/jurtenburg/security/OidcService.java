@@ -1,8 +1,9 @@
 package de.grauerreiter.jurtenburg.security;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.UnauthorizedException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -11,9 +12,14 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.ResolvableType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -37,22 +43,32 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class OidcService {
 
+    /** Deserialisierungsziel für die JSON-Antworten von Discovery und Token-Endpunkt. */
+    private static final ParameterizedTypeReference<Map<String, Object>> JSON_MAP =
+            new ParameterizedTypeReference<>() {};
+
     private final OidcProperties props;
     private final RestClient rest;
-    private final ObjectMapper json = new ObjectMapper();
     private final SecureRandom random = new SecureRandom();
 
     private volatile Metadata metadata;
 
     public OidcService(OidcProperties props) {
         this.props = props;
-        // Redirects folgen: Nextcloud liefert die Discovery spec-konform unter
-        // ${issuer}/.well-known/openid-configuration nur als Redirect auf den echten Endpunkt
-        // (…/index.php/.well-known/openid-configuration) aus. Ohne Folgen bekämen wir die
-        // HTML-Redirect-Seite statt des JSON. NORMAL folgt allen Redirects außer HTTPS→HTTP
-        // (kein Klartext-Downgrade).
+        // (1) Redirects folgen: Nextcloud liefert die Discovery spec-konform unter
+        //     ${issuer}/.well-known/openid-configuration nur als Redirect auf den echten Endpunkt
+        //     (…/index.php/.well-known/openid-configuration) aus. Ohne Folgen bekämen wir die
+        //     HTML-Redirect-Seite statt des JSON. NORMAL folgt allen Redirects außer HTTPS→HTTP
+        //     (kein Klartext-Downgrade).
+        // (2) Mislabeled JSON tolerieren: Discovery/Token kommen als valides JSON, aber mit
+        //     Content-Type text/html (entgegen RFC 8414 §3.2 / RFC 6749 §5.1). Der JSON-Konverter
+        //     unten liest daher unabhängig vom Content-Type und meldet einen HTML-Body als klaren,
+        //     handlungsleitenden Fehler — sodass die Aufrufer typisiert per .body(JSON_MAP) lesen.
         HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
-        this.rest = RestClient.builder().requestFactory(new JdkClientHttpRequestFactory(httpClient)).build();
+        this.rest = RestClient.builder()
+                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .configureMessageConverters(converters -> converters.withJsonConverter(new MislabeledJsonConverter()))
+                .build();
     }
 
     /** Fail-fast: bei aktiviertem, aber unvollständigem OIDC bootet die App gar nicht erst. */
@@ -97,7 +113,7 @@ public class OidcService {
         try {
             doc = getJson(url);
         } catch (Exception ex) {
-            throw new IllegalStateException("OIDC-Discovery fehlgeschlagen (" + url + "): " + ex.getMessage(), ex);
+            throw new IllegalStateException("OIDC-Discovery fehlgeschlagen (" + url + "): " + rootMessage(ex), ex);
         }
         if (doc == null || doc.get("authorization_endpoint") == null || doc.get("token_endpoint") == null
                 || doc.get("jwks_uri") == null) {
@@ -157,7 +173,7 @@ public class OidcService {
         try {
             tokens = postForm(meta.tokenEndpoint(), form);
         } catch (Exception ex) {
-            throw new UnauthorizedException("OIDC-Token-Austausch fehlgeschlagen: " + ex.getMessage());
+            throw new UnauthorizedException("OIDC-Token-Austausch fehlgeschlagen: " + rootMessage(ex));
         }
         Object idTokenRaw = tokens == null ? null : tokens.get("id_token");
         if (idTokenRaw == null) {
@@ -187,51 +203,35 @@ public class OidcService {
     }
 
     private Map<String, Object> postForm(String endpoint, MultiValueMap<String, String> form) {
-        String body = rest.post().uri(endpoint)
+        return rest.post().uri(endpoint)
                 .header(HttpHeaders.AUTHORIZATION, basicAuth())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(form)
                 .retrieve()
-                .body(String.class);
-        return parseJson(body, endpoint);
+                .body(JSON_MAP);
     }
 
     /**
-     * Holt eine JSON-Ressource und parst sie selbst. Bewusst nicht über die HttpMessageConverter:
-     * manche IdP (u.a. Nextcloud) liefern Discovery/Token mit {@code Content-Type: text/html} aus,
-     * wofür Spring sonst keinen Konverter auf {@code Map} findet und die Anfrage scheitert.
+     * Holt eine JSON-Ressource typisiert. Die Content-Type-Toleranz (Nextcloud deklariert JSON als
+     * {@code text/html}) und der klare Fehler bei einer HTML-Seite stecken im
+     * {@link MislabeledJsonConverter} — die Aufrufer bleiben schlicht.
      */
     private Map<String, Object> getJson(String url) {
-        String body = rest.get().uri(url)
+        return rest.get().uri(url)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
-                .body(String.class);
-        return parseJson(body, url);
+                .body(JSON_MAP);
     }
 
-    private Map<String, Object> parseJson(String body, String source) {
-        if (body == null || body.isBlank()) {
-            throw new IllegalStateException("Leere Antwort von " + source);
+    /** Tiefste Ursachen-Meldung — der {@link RestClient} verpackt Konverter-Fehler mehrfach, die
+     * handlungsleitende Meldung (z. B. „… war HTML statt JSON") steht ganz unten. */
+    private static String rootMessage(Throwable t) {
+        Throwable cause = t;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
         }
-        try {
-            return json.readValue(body, new TypeReference<Map<String, Object>>() {});
-        } catch (Exception ex) {
-            // Ein HTML-Body (Login-/Fehlerseite) statt JSON deutet darauf hin, dass unter der
-            // Discovery-URL nicht der OIDC-Provider antwortet. Klarer Hinweis statt roher
-            // Parser-Fehlermeldung.
-            if (looksLikeHtml(body)) {
-                throw new IllegalStateException("Antwort von " + source + " war HTML statt JSON – unter der"
-                        + " Discovery-URL antwortet kein OpenID-Configuration-Dokument. Issuer/Discovery-URL"
-                        + " des IdP prüfen.", ex);
-            }
-            throw new IllegalStateException("Antwort von " + source + " ist kein JSON: " + ex.getMessage(), ex);
-        }
-    }
-
-    /** Ein mit {@code <} beginnender Body (HTML-/XML-Seite) ist nie JSON. */
-    private static boolean looksLikeHtml(String body) {
-        return body.stripLeading().startsWith("<");
+        return cause.getMessage();
     }
 
     private String basicAuth() {
@@ -263,6 +263,65 @@ public class OidcService {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * JSON-Konverter, der die beiden Nextcloud-Eigenheiten kapselt, damit die Aufrufer typisiert
+     * per {@code .body(JSON_MAP)} lesen können:
+     * <ul>
+     *   <li>Er liest JSON unabhängig vom {@code Content-Type} (Nextcloud deklariert valides JSON als
+     *       {@code text/html} — entgegen RFC 8414 §3.2 / RFC 6749 §5.1).</li>
+     *   <li>Bekommt er statt JSON eine HTML-Seite (Login-/Startseite), wirft er einen klaren,
+     *       handlungsleitenden Fehler statt einer rohen Parser-Meldung.</li>
+     * </ul>
+     */
+    private static final class MislabeledJsonConverter extends JacksonJsonHttpMessageConverter {
+
+        MislabeledJsonConverter() {
+            setSupportedMediaTypes(List.of(
+                    MediaType.APPLICATION_JSON,
+                    MediaType.valueOf("application/*+json"),
+                    MediaType.ALL));
+        }
+
+        @Override
+        public Object read(ResolvableType type, HttpInputMessage message, Map<String, Object> hints)
+                throws IOException, HttpMessageNotReadableException {
+            byte[] body = message.getBody().readAllBytes();
+            if (looksLikeHtml(body)) {
+                throw new HttpMessageNotReadableException(
+                        "Antwort war HTML statt JSON – unter dieser URL antwortet kein"
+                                + " OpenID-Configuration-Dokument. Issuer/Discovery-URL des IdP prüfen.",
+                        message);
+            }
+            return super.read(type, new BufferedHttpInputMessage(body, message.getHeaders()), hints);
+        }
+
+        /** Ein mit {@code <} beginnender Body (HTML-/XML-Seite) ist nie JSON. */
+        private static boolean looksLikeHtml(byte[] body) {
+            for (byte b : body) {
+                if (Character.isWhitespace(b)) {
+                    continue;
+                }
+                return b == '<';
+            }
+            return false;
+        }
+    }
+
+    /** Gepufferte {@link HttpInputMessage}, damit der Body nach dem HTML-Check erneut (durch Jackson)
+     * gelesen werden kann. */
+    private record BufferedHttpInputMessage(byte[] body, HttpHeaders headers) implements HttpInputMessage {
+
+        @Override
+        public InputStream getBody() {
+            return new ByteArrayInputStream(body);
+        }
+
+        @Override
+        public HttpHeaders getHeaders() {
+            return headers;
         }
     }
 }
