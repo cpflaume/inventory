@@ -3,6 +3,7 @@ package de.grauerreiter.jurtenburg.security;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.UnauthorizedException;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -44,7 +46,13 @@ public class OidcService {
 
     public OidcService(OidcProperties props) {
         this.props = props;
-        this.rest = RestClient.builder().build();
+        // Redirects folgen: Nextcloud liefert die Discovery spec-konform unter
+        // ${issuer}/.well-known/openid-configuration nur als Redirect auf den echten Endpunkt
+        // (…/index.php/.well-known/openid-configuration) aus. Ohne Folgen bekämen wir die
+        // HTML-Redirect-Seite statt des JSON. NORMAL folgt allen Redirects außer HTTPS→HTTP
+        // (kein Klartext-Downgrade).
+        HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+        this.rest = RestClient.builder().requestFactory(new JdkClientHttpRequestFactory(httpClient)).build();
     }
 
     /** Fail-fast: bei aktiviertem, aber unvollständigem OIDC bootet die App gar nicht erst. */

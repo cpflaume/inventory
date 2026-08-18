@@ -58,9 +58,14 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
   `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
   aber `text/html`. `OidcService` parst diese Antworten selbst (JSON-Body statt Konverter-Auswahl
   über den `Content-Type`), sodass der Login trotzdem funktioniert.
-- **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Dann antwortet unter
-  `${issuer}/.well-known/openid-configuration` gar nicht der OIDC-Provider, sondern die Nextcloud-
-  Oberfläche (Login-/Startseite) — die Well-Known-Route ist hinter dem Reverse-Proxy nicht auf den
-  `oidc`-Endpunkt verdrahtet. Abhilfe: `OIDC_CONFIGURATION_URI` direkt auf das Metadaten-Dokument
-  setzen, bei Nextcloud i. d. R. `${issuer}/index.php/apps/oidc/openid-configuration`. Der `iss`-Claim
-  (und damit `OIDC_ISSUER_URI`) bleibt unverändert die Basis-URL.
+- **Redirect auf `…/index.php/.well-known/…`:** Nextcloud stellt die Discovery spec-konform unter
+  `${issuer}/.well-known/openid-configuration` bereit, leitet dort aber per HTTP-Redirect auf den
+  tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. `OidcService`
+  folgt Redirects (außer HTTPS→HTTP), sodass die Default-URL direkt funktioniert — `OIDC_ISSUER_URI`
+  bleibt die Basis-URL, `OIDC_CONFIGURATION_URI` ist dafür nicht nötig.
+- **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Bekommt der Client trotz
+  Redirect-Folgen HTML statt JSON, antwortet unter der Discovery-URL nicht der OIDC-Provider, sondern
+  die Nextcloud-Oberfläche (Login-/Startseite). Abhilfe: `OIDC_CONFIGURATION_URI` direkt auf das
+  Metadaten-Dokument setzen (z. B. `${issuer}/index.php/.well-known/openid-configuration` oder
+  `${issuer}/index.php/apps/oidc/openid-configuration`). Der `iss`-Claim (und damit `OIDC_ISSUER_URI`)
+  bleibt unverändert die Basis-URL.
