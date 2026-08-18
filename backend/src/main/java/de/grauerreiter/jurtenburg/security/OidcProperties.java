@@ -24,15 +24,6 @@ public class OidcProperties {
     /** Basis-URL des IdP (ohne {@code /.well-known/...}), zugleich erwarteter {@code iss}-Claim. */
     private String issuerUri = "";
 
-    /**
-     * Optionale, explizite Discovery-URL. Leer = spec-konform aus {@link #issuerUri} abgeleitet
-     * ({@code ${issuerUri}/.well-known/openid-configuration}). Setzen, wenn der IdP das Dokument
-     * nicht unter der Well-Known-URL ausliefert — etwa Nextcloud, das die Discovery je nach
-     * Reverse-Proxy nur unter {@code /index.php/apps/oidc/openid-configuration} bereitstellt und
-     * unter {@code /.well-known/...} stattdessen eine HTML-Seite zurückgibt.
-     */
-    private String configurationUri = "";
-
     private String clientId = "";
 
     private String clientSecret = "";
@@ -55,17 +46,6 @@ public class OidcProperties {
      * (gleicher Origin + {@code /auth/callback}).
      */
     private String postLoginRedirectUri = "";
-
-    /**
-     * Effektive Discovery-URL: {@link #configurationUri}, falls gesetzt, sonst spec-konform aus
-     * dem Issuer abgeleitet ({@code ${issuerUri}/.well-known/openid-configuration}).
-     */
-    public String effectiveConfigurationUri() {
-        if (configurationUri != null && !configurationUri.isBlank()) {
-            return configurationUri;
-        }
-        return issuerUri + "/.well-known/openid-configuration";
-    }
 
     /** Beim Login angeforderte Scopes als Liste (mind. {@code openid}). */
     public List<String> scopeList() {
@@ -104,9 +84,6 @@ public class OidcProperties {
         // erlaubt (lokale Entwicklung/Tests).
         requireHttpsOrLoopback("app.oidc.issuer-uri", issuerUri);
         requireHttpsOrLoopback("app.oidc.redirect-uri", redirectUri);
-        if (configurationUri != null && !configurationUri.isBlank()) {
-            requireHttpsOrLoopback("app.oidc.configuration-uri", configurationUri);
-        }
         if (!scopeList().contains("openid")) {
             throw new IllegalStateException("app.oidc.scopes muss 'openid' enthalten.");
         }
@@ -148,14 +125,6 @@ public class OidcProperties {
     public void setIssuerUri(String issuerUri) {
         // Trailing-Slash normalisieren, damit der iss-Vergleich robust ist.
         this.issuerUri = issuerUri == null ? "" : issuerUri.replaceAll("/+$", "");
-    }
-
-    public String getConfigurationUri() {
-        return configurationUri;
-    }
-
-    public void setConfigurationUri(String configurationUri) {
-        this.configurationUri = configurationUri == null ? "" : configurationUri.trim();
     }
 
     public String getClientId() {

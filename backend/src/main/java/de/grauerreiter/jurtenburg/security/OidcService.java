@@ -92,7 +92,7 @@ public class OidcService {
     }
 
     private Metadata discover() {
-        String url = props.effectiveConfigurationUri();
+        String url = props.getIssuerUri() + "/.well-known/openid-configuration";
         Map<String, Object> doc;
         try {
             doc = getJson(url);
@@ -217,14 +217,13 @@ public class OidcService {
         try {
             return json.readValue(body, new TypeReference<Map<String, Object>>() {});
         } catch (Exception ex) {
-            // Ein HTML-Body (Login-/Fehlerseite) statt JSON ist der typische Fall einer falschen
-            // Discovery-URL bzw. eines IdP, der die Well-Known-Route nicht ausliefert. Klarer Hinweis
-            // statt roher Parser-Fehlermeldung.
+            // Ein HTML-Body (Login-/Fehlerseite) statt JSON deutet darauf hin, dass unter der
+            // Discovery-URL nicht der OIDC-Provider antwortet. Klarer Hinweis statt roher
+            // Parser-Fehlermeldung.
             if (looksLikeHtml(body)) {
-                throw new IllegalStateException("Antwort von " + source + " war HTML statt JSON – die"
-                        + " Discovery-URL liefert kein OpenID-Configuration-Dokument aus. Discovery-URL"
-                        + " prüfen bzw. app.oidc.configuration-uri direkt auf das Metadaten-Dokument des"
-                        + " IdP setzen (Nextcloud z. B. /index.php/apps/oidc/openid-configuration).", ex);
+                throw new IllegalStateException("Antwort von " + source + " war HTML statt JSON – unter der"
+                        + " Discovery-URL antwortet kein OpenID-Configuration-Dokument. Issuer/Discovery-URL"
+                        + " des IdP prüfen.", ex);
             }
             throw new IllegalStateException("Antwort von " + source + " ist kein JSON: " + ex.getMessage(), ex);
         }

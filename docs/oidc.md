@@ -40,7 +40,6 @@ Die Redirect-URI muss exakt stimmen (`https`, kein Trailing-Slash) und liegt bew
 |---|---|---|
 | `OIDC_ENABLED` | – | `true` aktiviert OIDC (Default `false`). |
 | `OIDC_ISSUER_URI` | ✓ | Basis-URL der Nextcloud (z. B. `https://wolke.grauer-reiter.de`, ohne `/.well-known/...`); erwarteter `iss`. Muss HTTPS sein. |
-| `OIDC_CONFIGURATION_URI` | – | Explizite Discovery-URL, falls der IdP das Dokument **nicht** unter `${issuer}/.well-known/openid-configuration` ausliefert. Leer = spec-konform aus dem Issuer abgeleitet. Bei Nextcloud i. d. R. `${issuer}/index.php/apps/oidc/openid-configuration`. Muss HTTPS sein. |
 | `OIDC_CLIENT_ID` | ✓ | Client-ID aus dem IdP. |
 | `OIDC_CLIENT_SECRET` | ✓ | Client-Secret aus dem IdP — **Secret, nie ins Repo**. |
 | `OIDC_REDIRECT_URI` | ✓ | Callback-URL, identisch zur Redirect-URI im IdP. |
@@ -62,10 +61,8 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
   `${issuer}/.well-known/openid-configuration` bereit, leitet dort aber per HTTP-Redirect auf den
   tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. `OidcService`
   folgt Redirects (außer HTTPS→HTTP), sodass die Default-URL direkt funktioniert — `OIDC_ISSUER_URI`
-  bleibt die Basis-URL, `OIDC_CONFIGURATION_URI` ist dafür nicht nötig.
+  bleibt die Basis-URL.
 - **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Bekommt der Client trotz
   Redirect-Folgen HTML statt JSON, antwortet unter der Discovery-URL nicht der OIDC-Provider, sondern
-  die Nextcloud-Oberfläche (Login-/Startseite). Abhilfe: `OIDC_CONFIGURATION_URI` direkt auf das
-  Metadaten-Dokument setzen (z. B. `${issuer}/index.php/.well-known/openid-configuration` oder
-  `${issuer}/index.php/apps/oidc/openid-configuration`). Der `iss`-Claim (und damit `OIDC_ISSUER_URI`)
-  bleibt unverändert die Basis-URL.
+  die Nextcloud-Oberfläche (Login-/Startseite). Dann Issuer/Discovery-Route des IdP prüfen (App
+  „OpenID Connect Identity Provider" aktiviert? Well-Known-Redirect auf den `oidc`-Endpunkt gesetzt?).

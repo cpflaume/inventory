@@ -123,42 +123,8 @@ class OidcServiceDiscoveryTest {
         OidcService service = new OidcService(props);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, service::buildAuthorizationRequest);
-        // Statt roher Jackson-Fehlermeldung ein Hinweis auf HTML + configuration-uri.
+        // Statt roher Jackson-Fehlermeldung ein Hinweis auf HTML.
         assertTrue(ex.getMessage().contains("HTML"), () -> "Hinweis auf HTML erwartet: " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("configuration-uri"),
-                () -> "Hinweis auf app.oidc.configuration-uri erwartet: " + ex.getMessage());
-    }
-
-    @Test
-    void explicitConfigurationUriIsUsedWhenWellKnownServesHtml() throws IOException {
-        idp = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        String issuer = "http://127.0.0.1:" + idp.getAddress().getPort();
-        // Well-Known liefert wie in Produktion eine HTML-Seite …
-        idp.createContext("/.well-known/openid-configuration",
-                ex -> respond(ex, "text/html", "<!DOCTYPE html><html><body>Login</body></html>"));
-        // … das echte Metadaten-Dokument hängt (wie bei Nextcloud) unter dem App-Pfad.
-        idp.createContext("/index.php/apps/oidc/openid-configuration", ex -> respond(ex, "application/json", """
-                {
-                  "issuer": "%1$s",
-                  "authorization_endpoint": "%1$s/authorize",
-                  "token_endpoint": "%1$s/token",
-                  "jwks_uri": "%1$s/jwks"
-                }""".formatted(issuer)));
-        idp.start();
-
-        OidcProperties props = new OidcProperties();
-        props.setEnabled(true);
-        props.setIssuerUri(issuer);
-        props.setConfigurationUri(issuer + "/index.php/apps/oidc/openid-configuration");
-        props.setClientId("jurtenburg-test");
-        props.setClientSecret("secret");
-        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
-        OidcService service = new OidcService(props);
-
-        String url = service.buildAuthorizationRequest().url();
-
-        assertTrue(url.contains("/authorize"),
-                () -> "authorization_endpoint aus der konfigurierten Discovery-URL erwartet: " + url);
     }
 
     private static void respond(HttpExchange ex, String contentType, String body) throws IOException {
