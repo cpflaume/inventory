@@ -66,6 +66,11 @@ public class SecurityConfig {
                         // OIDC-Login-Flow (Weiterleitung zum IdP, Callback) und der Status fürs Frontend.
                         .requestMatchers(HttpMethod.GET, "/api/auth/oidc/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        // Fehler-Dispatch freigeben: läuft eine permitAll-Route (z.B. der OIDC-Login) in
+                        // eine ungefangene Exception, dispatcht Spring intern nach /error. Ohne Freigabe
+                        // liefe dieser Dispatch anonym in anyRequest().authenticated() → der echte 5xx würde
+                        // als irreführender 401 "Nicht angemeldet" maskiert.
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
