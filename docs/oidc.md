@@ -15,9 +15,13 @@ lokalen Login — der Rest der App bleibt provider-unabhängig.
 3. IdP ruft `GET /api/auth/oidc/callback?code=…&state=…` auf.
 4. Backend prüft State gegen das Cookie, tauscht den Code am Token-Endpunkt und verifiziert das
    ID-Token (JWKS-Signatur, `iss`/`aud`/`exp`, `nonce`).
-5. `UserProvisioningService` legt den Benutzer an bzw. aktualisiert ihn (Status `ACTIVE`) und setzt
+5. Backend ruft mit dem Access-Token den **UserInfo-Endpoint** ab und ergänzt die Profil-Claims
+   (`email`, `name`, `preferred_username`, Gruppen), die viele IdP — u.a. Nextcloud — nicht ins
+   ID-Token schreiben. Das verifizierte ID-Token hat Vorrang; UserInfo füllt nur fehlende Claims
+   und muss denselben `sub` liefern (OIDC Core 5.3.2), sonst wird die Antwort verworfen.
+6. `UserProvisioningService` legt den Benutzer an bzw. aktualisiert ihn (Status `ACTIVE`) und setzt
    seine Gruppen exakt auf den Gruppen-Claim.
-6. Weiterleitung ans Frontend `…/auth/callback#token=<App-JWT>`; die SPA übernimmt das Token aus
+7. Weiterleitung ans Frontend `…/auth/callback#token=<App-JWT>`; die SPA übernimmt das Token aus
    dem Fragment.
 
 ## IdP-Client (Nextcloud)
@@ -29,7 +33,7 @@ lokalen Login — der Rest der App bleibt provider-unabhängig.
 | Redirect-URI | **zeichengenau** `https://jurtenburg.copf-demo.de/api/auth/oidc/callback` |
 | Flow | Authorization Code, PKCE (`code_challenge_method=S256`) |
 | Scopes | `openid profile email groups` |
-| Claims im ID-Token | `email`, `name`, `preferred_username`, Gruppen-Claim (`groups`) |
+| Claims (ID-Token oder UserInfo) | `email`, `name`, `preferred_username`, Gruppen-Claim (`groups`) |
 
 Die Redirect-URI muss exakt stimmen (`https`, kein Trailing-Slash) und liegt bewusst unter
 `/api/...` — so routet Caddy sie ohne zusätzliche Route ans Backend.
@@ -62,6 +66,11 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
   tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. `OidcService`
   folgt Redirects (außer HTTPS→HTTP), sodass die Default-URL direkt funktioniert — `OIDC_ISSUER_URI`
   bleibt die Basis-URL.
+- **E-Mail/Name landen auf „user", keine Gruppen gemappt:** Der IdP legt die Profil-Claims nicht
+  ins ID-Token, sondern nur in die UserInfo-Antwort. Das Backend ruft UserInfo automatisch ab; bleibt
+  das Problem, im IdP prüfen, dass die Scopes `profile email groups` freigegeben sind und der
+  Gruppen-Claim (`OIDC_GROUPS_CLAIM`, Default `groups`) tatsächlich unter diesem Namen ausgeliefert
+  wird. Discovery muss zudem ein `userinfo_endpoint` melden (bei Nextcloud gegeben).
 - **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Bekommt der Client trotz
   Redirect-Folgen HTML statt JSON, antwortet unter der Discovery-URL nicht der OIDC-Provider, sondern
   die Nextcloud-Oberfläche (Login-/Startseite). Dann Issuer/Discovery-Route des IdP prüfen (App

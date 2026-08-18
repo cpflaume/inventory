@@ -11,6 +11,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -36,6 +38,8 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @Service
 public class OidcService {
+
+    private static final Logger log = LoggerFactory.getLogger(OidcService.class);
 
     private final OidcProperties props;
     private final RestClient rest;
@@ -66,7 +70,8 @@ public class OidcService {
     }
 
     /** Gecachte Discovery-Endpunkte + der aus dem JWKS aufgebaute, prüfende Decoder. */
-    private record Metadata(String authorizationEndpoint, String tokenEndpoint, NimbusJwtDecoder decoder) {
+    private record Metadata(String authorizationEndpoint, String tokenEndpoint, String userInfoEndpoint,
+            NimbusJwtDecoder decoder) {
     }
 
     /** Ergebnis eines Login-Starts: Weiterleitungs-URL zum IdP plus die Geheimnisse fürs Cookie. */
@@ -110,7 +115,10 @@ public class OidcService {
                 new JwtIssuerValidator(props.getIssuerUri()),
                 audienceValidator());
         decoder.setJwtValidator(validators);
-        return new Metadata((String) doc.get("authorization_endpoint"), (String) doc.get("token_endpoint"), decoder);
+        // userinfo_endpoint ist optional: nicht jeder IdP bietet ihn an. Fehlt er, fallen wir auf
+        // die (ggf. dünnen) ID-Token-Claims zurück.
+        return new Metadata((String) doc.get("authorization_endpoint"), (String) doc.get("token_endpoint"),
+                (String) doc.get("userinfo_endpoint"), decoder);
     }
 
     private OAuth2TokenValidator<Jwt> audienceValidator() {
@@ -178,12 +186,57 @@ public class OidcService {
         if (subject == null || subject.isBlank()) {
             throw new UnauthorizedException("ID-Token ohne 'sub'.");
         }
+        // Nextcloud (und viele andere IdP) legen die Profil-Claims nicht ins ID-Token, sondern
+        // liefern sie erst über den UserInfo-Endpoint. Wir holen sie mit dem Access-Token nach und
+        // mergen: das verifizierte ID-Token hat Vorrang, UserInfo füllt fehlende Claims.
+        Object accessToken = tokens.get("access_token");
+        Map<String, Object> userInfo = fetchUserInfo(meta, accessToken == null ? null : accessToken.toString(),
+                subject);
         return new OidcIdentity(
                 subject,
-                idToken.getClaimAsString("email"),
-                idToken.getClaimAsString("preferred_username"),
-                idToken.getClaimAsString("name"),
-                groups(idToken));
+                claim(idToken, userInfo, "email"),
+                claim(idToken, userInfo, "preferred_username"),
+                claim(idToken, userInfo, "name"),
+                groups(idToken, userInfo));
+    }
+
+    /**
+     * Holt die Profil-Claims vom UserInfo-Endpoint (mit dem Access-Token als Bearer). Best-effort:
+     * fehlt der Endpunkt, das Access-Token oder scheitert der Abruf, wird eine leere Map geliefert
+     * und der Login läuft mit den ID-Token-Claims weiter. Der {@code sub} der Antwort muss zum
+     * ID-Token passen (OIDC Core 5.3.2), sonst wird die Antwort verworfen.
+     */
+    private Map<String, Object> fetchUserInfo(Metadata meta, String accessToken, String expectedSubject) {
+        if (meta.userInfoEndpoint() == null || accessToken == null || accessToken.isBlank()) {
+            return Map.of();
+        }
+        try {
+            String body = rest.get().uri(meta.userInfoEndpoint())
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String.class);
+            Map<String, Object> info = parseJson(body, meta.userInfoEndpoint());
+            Object sub = info.get("sub");
+            if (sub == null || !expectedSubject.equals(sub.toString())) {
+                log.warn("OIDC-UserInfo verworfen: 'sub' passt nicht zum ID-Token.");
+                return Map.of();
+            }
+            return info;
+        } catch (Exception ex) {
+            log.warn("OIDC-UserInfo-Abruf fehlgeschlagen ({}): {}", meta.userInfoEndpoint(), ex.getMessage());
+            return Map.of();
+        }
+    }
+
+    /** Claim aus dem ID-Token lesen; fehlt er dort, aus den UserInfo-Claims nachziehen. */
+    private static String claim(Jwt idToken, Map<String, Object> userInfo, String name) {
+        String fromToken = idToken.getClaimAsString(name);
+        if (fromToken != null && !fromToken.isBlank()) {
+            return fromToken;
+        }
+        Object fromUserInfo = userInfo.get(name);
+        return fromUserInfo == null ? null : fromUserInfo.toString();
     }
 
     private Map<String, Object> postForm(String endpoint, MultiValueMap<String, String> form) {
@@ -239,9 +292,20 @@ public class OidcService {
         return "Basic " + Base64.getEncoder().encodeToString(creds.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** Gruppen-Claim robust lesen: Liste oder einzelner String werden beide akzeptiert. */
-    private List<String> groups(Jwt idToken) {
-        Object raw = idToken.getClaims().get(props.getGroupsClaim());
+    /**
+     * Gruppen aus dem Gruppen-Claim lesen — zuerst aus dem ID-Token, sonst aus den UserInfo-Claims
+     * (Nextcloud liefert Gruppen typischerweise erst über UserInfo). Liste oder einzelner String
+     * werden beide akzeptiert.
+     */
+    private List<String> groups(Jwt idToken, Map<String, Object> userInfo) {
+        List<String> fromToken = groupsFrom(idToken.getClaims().get(props.getGroupsClaim()));
+        if (!fromToken.isEmpty()) {
+            return fromToken;
+        }
+        return groupsFrom(userInfo.get(props.getGroupsClaim()));
+    }
+
+    private static List<String> groupsFrom(Object raw) {
         if (raw instanceof List<?> list) {
             return list.stream().filter(java.util.Objects::nonNull).map(Object::toString).collect(Collectors.toList());
         }
