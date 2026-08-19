@@ -13,7 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * gesetzt sein (siehe {@link #validate()}).
  *
  * <p>Nur der <em>Issuer</em> wird konfiguriert; die konkreten Endpunkte (authorization/token/jwks)
- * bezieht {@link OidcService} per Discovery aus {@code ${issuerUri}/.well-known/openid-configuration}.</p>
+ * bezieht {@link OidcClientRegistrationRepository} per Discovery aus
+ * {@code ${issuerUri}/.well-known/openid-configuration}.</p>
  */
 @ConfigurationProperties(prefix = "app.oidc")
 public class OidcProperties {

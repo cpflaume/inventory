@@ -16,9 +16,13 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
   `AppUserDetails`. Autorisierung auf Lager-Ebene zentral im `DepotAccessInterceptor` (`/api/depots/**`)
   via `AccessService` (Gruppe→Lager-Mapping, höchste Rolle gewinnt; Plattform-Admin sieht alles).
   `/api/admin/**` = Plattform-Admin. Mehrere Auth-Provider: jeder mündet im selben App-JWT. OIDC
-  (Authorization Code + PKCE, zustandslos über signiertes State-Cookie) läuft über `OidcService`
-  (Discovery + JWKS-Verifikation) → `OidcAuthController` (`/api/auth/oidc/login|callback|config`) →
-  `UserProvisioningService`; Standard AUS (`app.oidc.enabled`), Setup siehe `docs/oidc.md`. Benutzer:
+  (Authorization Code + PKCE) nutzt die **Spring-Security-OAuth2-Client-Bibliothek** (`oauth2Login`,
+  verdrahtet in `OidcLoginConfigurer`/`OidcClientConfig`, nur bei `app.oidc.enabled=true`): Discovery
+  → `ClientRegistration` (`OidcClientRegistrationRepository`), zustandslos über ein HMAC-signiertes
+  `oidc_auth`-Cookie (`OidcCookieAuthorizationRequestRepository`), Abschluss im
+  `OidcAuthenticationSuccessHandler` → `UserProvisioningService`. Start `/api/auth/oidc/login/oidc`,
+  Callback `/api/auth/oidc/callback`, Status `/api/auth/oidc/config`. Standard AUS
+  (`app.oidc.enabled`), Setup siehe `docs/oidc.md`. Benutzer:
   `AppUser` (LOCAL/OIDC, PENDING→ACTIVE), `UserGroup`, `GroupDepotAccess`.
 - **Aufräumorte**: `Location` mit Typ `SHELF` (Fach-Raster `gridRows`×`gridCols`, 2×1…8×8) oder
   `BOX` (im Regalfach via `parentLocationId`+`row`/`col`, sonst freistehend). Fach-Regel

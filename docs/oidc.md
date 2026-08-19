@@ -2,25 +2,32 @@
 
 Jurtenburg nimmt Logins über einen standardkonformen OpenID-Connect-Provider an (Zielbild:
 Nextcloud-App **„OpenID Connect Identity Provider"**, App-ID `oidc`). Verwendet wird der
-**Authorization Code Flow mit PKCE**, komplett **zustandslos**: State, Nonce und PKCE-Verifier
-reisen signiert in einem kurzlebigen `HttpOnly`-Cookie. Am Ende steht dasselbe App-JWT wie beim
-lokalen Login — der Rest der App bleibt provider-unabhängig.
+**Authorization Code Flow mit PKCE**, umgesetzt mit der **Spring-Security-OAuth2-Client-Bibliothek**
+(`spring-boot-starter-oauth2-client`) — die trägt die gesamte Protokoll-Arbeit (Discovery,
+JWKS-Verifikation des ID-Tokens, `state`/`nonce`, PKCE, UserInfo-Merge). Der Flow bleibt
+**zustandslos**: der laufende Authorization-Request (State, Nonce, PKCE-Verifier) reist nicht in
+einer Server-Session, sondern signiert (HMAC-SHA256) in einem kurzlebigen `HttpOnly`-Cookie
+(`oidc_auth`) — verträglich mit der `SessionCreationPolicy.STATELESS` der App. Am Ende steht dasselbe
+App-JWT wie beim lokalen Login — der Rest der App bleibt provider-unabhängig.
 
 **Standard: AUS** (`app.oidc.enabled=false`). Ohne Konfiguration läuft die App rein lokal.
 
 ## Ablauf
 
-1. `GET /api/auth/oidc/login` — setzt das State-Cookie, leitet zum IdP weiter.
+1. `GET /api/auth/oidc/login/oidc` — die Bibliothek legt das `oidc_auth`-Cookie an und leitet zum IdP
+   weiter (die konkrete URL liefert `GET /api/auth/oidc/config` dem Frontend).
 2. Nutzer meldet sich in Nextcloud an.
-3. IdP ruft `GET /api/auth/oidc/callback?code=…&state=…` auf.
-4. Backend prüft State gegen das Cookie, tauscht den Code am Token-Endpunkt und verifiziert das
-   ID-Token (JWKS-Signatur, `iss`/`aud`/`exp`, `nonce`).
-5. Backend ruft mit dem Access-Token den **UserInfo-Endpoint** ab und ergänzt die Profil-Claims
-   (`email`, `name`, `preferred_username`, Gruppen), die viele IdP — u.a. Nextcloud — nicht ins
-   ID-Token schreiben. Das verifizierte ID-Token hat Vorrang; UserInfo füllt nur fehlende Claims
-   und muss denselben `sub` liefern (OIDC Core 5.3.2), sonst wird die Antwort verworfen.
-6. `UserProvisioningService` legt den Benutzer an bzw. aktualisiert ihn (Status `ACTIVE`) und setzt
-   seine Gruppen exakt auf den Gruppen-Claim.
+3. IdP ruft `GET /api/auth/oidc/callback?code=…&state=…` auf (zeichengenau die beim IdP hinterlegte
+   Redirect-URI).
+4. Die Bibliothek prüft `state` gegen das Cookie, tauscht den Code am Token-Endpunkt und verifiziert
+   das ID-Token (JWKS-Signatur, `iss`/`aud`/`exp`, `nonce`).
+5. Die Bibliothek (`OidcUserService`) ruft mit dem Access-Token den **UserInfo-Endpoint** ab und
+   ergänzt die Profil-Claims (`email`, `name`, `preferred_username`, Gruppen), die viele IdP — u.a.
+   Nextcloud — nicht ins ID-Token schreiben. UserInfo muss denselben `sub` liefern (OIDC Core 5.3.2),
+   sonst wird die Antwort verworfen. Für die Profil-Claims hat die UserInfo-Antwort Vorrang; das
+   ID-Token bleibt die verifizierte Authentifizierungs-Assertion (`sub`, `iss`, `aud`, `nonce`).
+6. Der `OidcAuthenticationSuccessHandler` ruft den `UserProvisioningService`, der den Benutzer anlegt
+   bzw. aktualisiert (Status `ACTIVE`) und seine Gruppen exakt auf den Gruppen-Claim setzt.
 7. Weiterleitung ans Frontend `…/auth/callback#token=<App-JWT>`; die SPA übernimmt das Token aus
    dem Fragment.
 
@@ -59,13 +66,15 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
 
 - **Discovery/Token mit `Content-Type: text/html`:** Nextcloud liefert
   `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
-  aber `text/html`. `OidcService` parst diese Antworten selbst (JSON-Body statt Konverter-Auswahl
-  über den `Content-Type`), sodass der Login trotzdem funktioniert.
+  aber `text/html`. Die Discovery (`OidcClientRegistrationRepository`) parst die Antwort selbst
+  (JSON-Body statt Konverter-Auswahl über den `Content-Type`); der Token-Client
+  (`OidcClientConfig#oidcTokenResponseClient`) akzeptiert `text/html` explizit als Token-Media-Type,
+  sodass der Login trotzdem funktioniert.
 - **Redirect auf `…/index.php/.well-known/…`:** Nextcloud stellt die Discovery spec-konform unter
   `${issuer}/.well-known/openid-configuration` bereit, leitet dort aber per HTTP-Redirect auf den
-  tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. `OidcService`
-  folgt Redirects (außer HTTPS→HTTP), sodass die Default-URL direkt funktioniert — `OIDC_ISSUER_URI`
-  bleibt die Basis-URL.
+  tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. Sowohl die
+  Discovery als auch der Token-Client folgen Redirects (außer HTTPS→HTTP), sodass die Default-URL
+  direkt funktioniert — `OIDC_ISSUER_URI` bleibt die Basis-URL.
 - **E-Mail/Name landen auf „user", keine Gruppen gemappt:** Der IdP legt die Profil-Claims nicht
   ins ID-Token, sondern nur in die UserInfo-Antwort. Das Backend ruft UserInfo automatisch ab; bleibt
   das Problem, im IdP prüfen, dass die Scopes `profile email groups` freigegeben sind und der

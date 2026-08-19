@@ -1,26 +1,28 @@
 package de.grauerreiter.jurtenburg;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import de.grauerreiter.jurtenburg.security.OidcClientRegistrationRepository;
 import de.grauerreiter.jurtenburg.security.OidcProperties;
-import de.grauerreiter.jurtenburg.security.OidcService;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 /**
- * Discovery muss auch dann funktionieren, wenn der IdP das JSON-Dokument mit einem falschen
- * {@code Content-Type} ausliefert. Nextcloud liefert {@code /.well-known/openid-configuration}
- * mit {@code text/html} aus — früher scheiterte Spring hier mangels HttpMessageConverter
- * (Regressionsschutz für den gemeldeten Fehler).
+ * Die Discovery, die die {@link ClientRegistration} für die Spring-Security-OAuth2-Client-Bibliothek
+ * aufbaut, muss dieselbe Nextcloud-Toleranz haben wie zuvor: JSON auch bei falschem
+ * {@code Content-Type: text/html} parsen und Redirects folgen ({@code …/.well-known} →
+ * {@code …/index.php/.well-known}). Regressionsschutz für die gemeldeten Fehler.
  */
-class OidcServiceDiscoveryTest {
+class OidcClientRegistrationRepositoryTest {
 
     private HttpServer idp;
 
@@ -31,7 +33,17 @@ class OidcServiceDiscoveryTest {
         }
     }
 
-    private OidcService serviceAgainstIdp(String discoveryContentType) throws IOException {
+    private static OidcProperties props(String issuer) {
+        OidcProperties props = new OidcProperties();
+        props.setEnabled(true);
+        props.setIssuerUri(issuer);
+        props.setClientId("jurtenburg-test");
+        props.setClientSecret("secret");
+        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
+        return props;
+    }
+
+    private ClientRegistration registrationAgainstIdp(String discoveryContentType) throws IOException {
         idp = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         String issuer = "http://127.0.0.1:" + idp.getAddress().getPort();
         idp.createContext("/.well-known/openid-configuration", ex -> respond(ex, discoveryContentType, """
@@ -39,37 +51,40 @@ class OidcServiceDiscoveryTest {
                   "issuer": "%1$s",
                   "authorization_endpoint": "%1$s/authorize",
                   "token_endpoint": "%1$s/token",
+                  "userinfo_endpoint": "%1$s/userinfo",
                   "jwks_uri": "%1$s/jwks"
                 }""".formatted(issuer)));
         idp.start();
-
-        OidcProperties props = new OidcProperties();
-        props.setEnabled(true);
-        props.setIssuerUri(issuer);
-        props.setClientId("jurtenburg-test");
-        props.setClientSecret("secret");
-        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
-        return new OidcService(props);
+        return new OidcClientRegistrationRepository(props(issuer))
+                .findByRegistrationId(OidcClientRegistrationRepository.REGISTRATION_ID);
     }
 
     @Test
     void discoveryWithHtmlContentTypeStillParses() throws IOException {
         // Wie Nextcloud: korrektes JSON, aber Content-Type text/html.
-        OidcService service = serviceAgainstIdp("text/html");
+        ClientRegistration registration = registrationAgainstIdp("text/html");
 
-        String url = service.buildAuthorizationRequest().url();
-
-        assertTrue(url.startsWith("http://127.0.0.1:"), () -> "unerwartete URL: " + url);
-        assertTrue(url.contains("/authorize"), () -> "authorization_endpoint aus Discovery erwartet: " + url);
+        assertTrue(registration.getProviderDetails().getAuthorizationUri().endsWith("/authorize"),
+                () -> "authorization_endpoint aus Discovery erwartet: "
+                        + registration.getProviderDetails().getAuthorizationUri());
+        assertTrue(registration.getProviderDetails().getTokenUri().endsWith("/token"));
+        assertEquals("sub", registration.getProviderDetails().getUserInfoEndpoint().getUserNameAttributeName());
     }
 
     @Test
     void discoveryWithJsonContentTypeStillParses() throws IOException {
-        OidcService service = serviceAgainstIdp("application/json");
+        ClientRegistration registration = registrationAgainstIdp("application/json");
 
-        String url = service.buildAuthorizationRequest().url();
+        assertTrue(registration.getProviderDetails().getAuthorizationUri().endsWith("/authorize"));
+    }
 
-        assertTrue(url.contains("/authorize"), () -> "authorization_endpoint aus Discovery erwartet: " + url);
+    @Test
+    void unknownRegistrationIdReturnsNull() throws IOException {
+        idp = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        String issuer = "http://127.0.0.1:" + idp.getAddress().getPort();
+        idp.start();
+        // Fremde Registrierungs-ID → kein Client, ohne dass überhaupt Discovery angestoßen wird.
+        assertEquals(null, new OidcClientRegistrationRepository(props(issuer)).findByRegistrationId("something-else"));
     }
 
     @Test
@@ -92,18 +107,12 @@ class OidcServiceDiscoveryTest {
                 }""".formatted(issuer)));
         idp.start();
 
-        OidcProperties props = new OidcProperties();
-        props.setEnabled(true);
-        props.setIssuerUri(issuer);
-        props.setClientId("jurtenburg-test");
-        props.setClientSecret("secret");
-        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
-        OidcService service = new OidcService(props);
+        ClientRegistration registration = new OidcClientRegistrationRepository(props(issuer))
+                .findByRegistrationId(OidcClientRegistrationRepository.REGISTRATION_ID);
 
-        String url = service.buildAuthorizationRequest().url();
-
-        assertTrue(url.contains("/authorize"),
-                () -> "authorization_endpoint nach Redirect-Folgen erwartet: " + url);
+        assertTrue(registration.getProviderDetails().getAuthorizationUri().endsWith("/authorize"),
+                () -> "authorization_endpoint nach Redirect-Folgen erwartet: "
+                        + registration.getProviderDetails().getAuthorizationUri());
     }
 
     @Test
@@ -114,15 +123,9 @@ class OidcServiceDiscoveryTest {
                 ex -> respond(ex, "text/html", "<!DOCTYPE html><html><body>Login</body></html>"));
         idp.start();
 
-        OidcProperties props = new OidcProperties();
-        props.setEnabled(true);
-        props.setIssuerUri(issuer);
-        props.setClientId("jurtenburg-test");
-        props.setClientSecret("secret");
-        props.setRedirectUri("http://localhost/api/auth/oidc/callback");
-        OidcService service = new OidcService(props);
-
-        IllegalStateException ex = assertThrows(IllegalStateException.class, service::buildAuthorizationRequest);
+        OidcClientRegistrationRepository repo = new OidcClientRegistrationRepository(props(issuer));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> repo.findByRegistrationId(OidcClientRegistrationRepository.REGISTRATION_ID));
         // Statt roher Jackson-Fehlermeldung ein Hinweis auf HTML.
         assertTrue(ex.getMessage().contains("HTML"), () -> "Hinweis auf HTML erwartet: " + ex.getMessage());
     }
