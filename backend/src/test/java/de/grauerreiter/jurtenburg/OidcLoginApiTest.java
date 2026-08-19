@@ -116,7 +116,10 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
         org.junit.jupiter.api.Assertions.assertTrue(location.startsWith(ISSUER + "/authorize"));
 
         var params = UriComponentsBuilder.fromUriString(location).build().getQueryParams();
-        String state = params.getFirst("state");
+        // getQueryParams() liefert die Werte URL-kodiert; ein echter Servlet-Callback bekäme sie
+        // dekodiert. Spring erzeugt den State als Standard-Base64 (mit '='-Padding → '%3D' in der
+        // URL), daher hier dekodieren, sonst schlägt der State-Abgleich im Callback fehl.
+        String state = dec(params.getFirst("state"));
         String nonce = params.getFirst("nonce");
         org.junit.jupiter.api.Assertions.assertEquals("S256", params.getFirst("code_challenge_method"));
         org.junit.jupiter.api.Assertions.assertNotNull(params.getFirst("code_challenge"));
@@ -161,7 +164,7 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
 
         var cbResult = anon.perform(get("/api/auth/oidc/callback")
                         .param("code", "dummy-auth-code")
-                        .param("state", params.getFirst("state"))
+                        .param("state", dec(params.getFirst("state")))
                         .cookie(stateCookie))
                 .andExpect(status().isFound())
                 .andReturn();
@@ -234,6 +237,11 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
         int start = setCookieHeader.indexOf(prefix) + prefix.length();
         int end = setCookieHeader.indexOf(';', start);
         return setCookieHeader.substring(start, end < 0 ? setCookieHeader.length() : end);
+    }
+
+    /** URL-Query-Wert dekodieren (wie es ein echter Servlet-Callback täte). */
+    private static String dec(String value) {
+        return value == null ? null : java.net.URLDecoder.decode(value, StandardCharsets.UTF_8);
     }
 
     private static String fragmentValue(String url, String key) {
