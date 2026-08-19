@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OidcCallbackPage from './pages/OidcCallbackPage';
 import AdminPage from './pages/AdminPage';
+import AuditLogPage from './pages/AuditLogPage';
 import ErrorPage from './pages/ErrorPage';
 import { RequireAdmin, RequireAuth } from './auth/guards';
 
@@ -34,7 +35,10 @@ export const router = createBrowserRouter([
           { path: '/', element: <DepotListPage /> },
           {
             element: <RequireAdmin />,
-            children: [{ path: '/admin', element: <AdminPage /> }],
+            children: [
+              { path: '/admin', element: <AdminPage /> },
+              { path: '/admin/audit', element: <AuditLogPage /> },
+            ],
           },
           {
             path: '/lager/:depotId',

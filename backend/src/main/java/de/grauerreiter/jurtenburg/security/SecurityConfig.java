@@ -1,5 +1,6 @@
 package de.grauerreiter.jurtenburg.security;
 
+import de.grauerreiter.jurtenburg.service.AuditService;
 import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -25,12 +27,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final AuditService auditService;
     private final ObjectMapper objectMapper;
     private final String[] allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter, ObjectMapper objectMapper,
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter, AuditService auditService, ObjectMapper objectMapper,
             @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174}") String allowedOrigins) {
         this.jwtFilter = jwtFilter;
+        this.auditService = auditService;
         this.objectMapper = objectMapper;
         this.allowedOrigins = allowedOrigins.split("\\s*,\\s*");
     }
@@ -74,7 +78,10 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                // Hinter der Autorisierung: der Principal ist gesetzt und der Status steht fest,
+                // sodass jede verändernde Anfrage vollständig protokolliert werden kann.
+                .addFilterAfter(new AuditFilter(auditService), AuthorizationFilter.class);
         return http.build();
     }
 

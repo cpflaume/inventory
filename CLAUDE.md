@@ -25,6 +25,11 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
   „Kiste XOR lose Items" wird in `LocationService.assertCellFree` durchgesetzt — beim Erweitern
   der Platzierung diese Regel beibehalten.
 - **DTOs**: Request/Response als Records in `web/Dtos.java`, aggregierte Ansichten in `web/Views.java`.
+- **Audit** (`service/AuditService`, `security/AuditFilter`): `AuditFilter` läuft in der Security-Kette
+  hinter der Autorisierung und protokolliert automatisch **jede** verändernde Anfrage (POST/PUT/PATCH/DELETE)
+  → neue Mutations-Endpunkte sind ohne Zutun abgedeckt. Login wird explizit im `AuthController`/OIDC-Callback
+  erfasst (auch Fehlschläge). Einträge liegen in `audit_log` (denormalisierter `actor_username`, kein FK).
+  Ansicht/Filter nur für Admins über `/api/admin/audit-logs` → Frontend `AuditLogPage` (Link auf der Admin-Seite).
 - **Fehler**: `ApiExceptions.NotFoundException` (404) / `BusinessRuleException` (422).
 - **Bilder/Namen**: keine Modell-Kennung o.ä. in committete Artefakte.
 
@@ -37,7 +42,8 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 
 ## Tests
 - Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
-  `KitApiTest` (Bausatz anlegen+listen), `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff).
+  `KitApiTest` (Bausatz anlegen+listen), `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff),
+  `AuditApiTest` (Login + verändernde Operationen werden protokolliert, Admin-only-Filteransicht).
   Integrationstests laufen als Plattform-Admin (`adminMockMvc`); `AuthApiTest` nutzt echte Tokens.
 - Frontend Unit: `WarehousePage.test.tsx` (virtuelles Lager rendert Regal/Kiste/freistehend).
 - Frontend E2E (`frontend/e2e/`, Playwright): ein Spec je Haupt-Use-Case (Auth/Login+Registrierung,

@@ -7,6 +7,7 @@ import de.grauerreiter.jurtenburg.security.OidcProperties;
 import de.grauerreiter.jurtenburg.security.OidcService;
 import de.grauerreiter.jurtenburg.security.OidcService.AuthorizationRequest;
 import de.grauerreiter.jurtenburg.security.OidcService.OidcIdentity;
+import de.grauerreiter.jurtenburg.service.AuditService;
 import de.grauerreiter.jurtenburg.service.UserProvisioningService;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.NotFoundException;
 import io.jsonwebtoken.Claims;
@@ -52,13 +53,15 @@ public class OidcAuthController {
     private final OidcProperties props;
     private final JwtService jwtService;
     private final UserProvisioningService provisioning;
+    private final AuditService audit;
 
     public OidcAuthController(OidcService oidc, OidcProperties props, JwtService jwtService,
-            UserProvisioningService provisioning) {
+            UserProvisioningService provisioning, AuditService audit) {
         this.oidc = oidc;
         this.props = props;
         this.jwtService = jwtService;
         this.provisioning = provisioning;
+        this.audit = audit;
     }
 
     /** Öffentlich: sagt dem Frontend, ob der „Mit Nextcloud anmelden"-Button erscheinen soll. */
@@ -106,6 +109,7 @@ public class OidcAuthController {
             AppUser user = provisioning.provisionExternalUser(AuthProvider.OIDC, id.subject(),
                     id.preferredUsername(), id.email(), id.displayName(), id.groups(), props.isAutoCreateGroups());
             String token = jwtService.generate(user);
+            audit.recordLogin(user.getUsername(), user.getId(), true, AuditService.clientIp(request));
             return redirect(frontend("#token=" + enc(token)), cleared);
         } catch (Exception ex) {
             log.warn("OIDC-Callback fehlgeschlagen: {}", ex.getMessage());
