@@ -47,6 +47,10 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
     private static final String CLIENT_ID = "jurtenburg-test";
     // Nonce, das der IdP-Stub ins nächste ID-Token schreibt (pro Testlauf gesetzt).
     private static final AtomicReference<String> NONCE = new AtomicReference<>("");
+    // Wenn true, schreibt der IdP-Stub nur 'sub' (+ Pflicht-Claims) ins ID-Token; Profil und
+    // Gruppen kommen dann ausschließlich aus /userinfo (Nextcloud-Verhalten).
+    private static final java.util.concurrent.atomic.AtomicBoolean MINIMAL_ID_TOKEN =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
 
     static {
         try {
@@ -59,12 +63,22 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
                       "issuer": "%1$s",
                       "authorization_endpoint": "%1$s/authorize",
                       "token_endpoint": "%1$s/token",
+                      "userinfo_endpoint": "%1$s/userinfo",
                       "jwks_uri": "%1$s/jwks"
                     }""".formatted(ISSUER)));
             IDP.createContext("/jwks", ex -> respondJson(ex, new JWKSet(RSA_KEY.toPublicJWK()).toString(true)));
             IDP.createContext("/token", ex -> respondJson(ex, """
                     {"access_token":"a","token_type":"Bearer","expires_in":300,"id_token":"%s"}"""
                     .formatted(signIdToken())));
+            // UserInfo liefert das volle Profil inkl. Gruppen (sub muss zum ID-Token passen).
+            IDP.createContext("/userinfo", ex -> respondJson(ex, """
+                    {
+                      "sub": "nc-user-42",
+                      "email": "scout@example.org",
+                      "preferred_username": "scout",
+                      "name": "Pfadi Scout",
+                      "groups": ["Kasse", "Kueche"]
+                    }"""));
             IDP.start();
         } catch (Exception e) {
             throw new IllegalStateException("IdP-Stub konnte nicht starten", e);
@@ -83,6 +97,7 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
 
     @Test
     void fullOidcLoginProvisionsUserAndIssuesAppToken() throws Exception {
+        MINIMAL_ID_TOKEN.set(false);
         MockMvc anon = anonymousMockMvc(context);
 
         // /config meldet dem Frontend: OIDC ist aktiv.
@@ -131,6 +146,36 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void profileAndGroupsAreTakenFromUserInfoWhenIdTokenIsMinimal() throws Exception {
+        // Regression: Nextcloud liefert im ID-Token nur 'sub'. Ohne UserInfo-Abruf landeten
+        // E-Mail/Name auf "user" und es wurden keine Gruppen gemappt.
+        MINIMAL_ID_TOKEN.set(true);
+        MockMvc anon = anonymousMockMvc(context);
+
+        var loginResult = anon.perform(get("/api/auth/oidc/login")).andReturn();
+        var params = UriComponentsBuilder.fromUriString(loginResult.getResponse().getHeader("Location"))
+                .build().getQueryParams();
+        NONCE.set(params.getFirst("nonce"));
+        Cookie stateCookie = new Cookie("oidc_state", cookieValue(loginResult.getResponse().getHeader("Set-Cookie")));
+
+        var cbResult = anon.perform(get("/api/auth/oidc/callback")
+                        .param("code", "dummy-auth-code")
+                        .param("state", params.getFirst("state"))
+                        .cookie(stateCookie))
+                .andExpect(status().isFound())
+                .andReturn();
+        String appToken = fragmentValue(cbResult.getResponse().getHeader("Location"), "token");
+        org.junit.jupiter.api.Assertions.assertNotNull(appToken, "App-JWT im Fragment erwartet");
+
+        // E-Mail, Username (= E-Mail) und Gruppen stammen jetzt aus /userinfo, nicht "user".
+        anon.perform(get("/api/auth/me").header("Authorization", "Bearer " + appToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.username", org.hamcrest.Matchers.is("scout@example.org")))
+                .andExpect(jsonPath("$.user.email", org.hamcrest.Matchers.is("scout@example.org")))
+                .andExpect(jsonPath("$.user.groups.length()", org.hamcrest.Matchers.is(2)));
+    }
+
+    @Test
     void callbackWithMismatchedStateRedirectsWithError() throws Exception {
         MockMvc anon = anonymousMockMvc(context);
         String setCookie = anon.perform(get("/api/auth/oidc/login"))
@@ -149,18 +194,21 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
     private static String signIdToken() {
         try {
             Instant now = Instant.now();
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+            JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                     .issuer(ISSUER)
                     .subject("nc-user-42")
                     .audience(CLIENT_ID)
                     .issueTime(Date.from(now))
                     .expirationTime(Date.from(now.plusSeconds(300)))
-                    .claim("nonce", NONCE.get())
-                    .claim("email", "scout@example.org")
-                    .claim("preferred_username", "scout")
-                    .claim("name", "Pfadi Scout")
-                    .claim("groups", List.of("Leiter", "Team A"))
-                    .build();
+                    .claim("nonce", NONCE.get());
+            // Nextcloud legt die Profil-Claims oft nicht ins ID-Token; dann trägt sie nur /userinfo.
+            if (!MINIMAL_ID_TOKEN.get()) {
+                builder.claim("email", "scout@example.org")
+                        .claim("preferred_username", "scout")
+                        .claim("name", "Pfadi Scout")
+                        .claim("groups", List.of("Leiter", "Team A"));
+            }
+            JWTClaimsSet claims = builder.build();
             SignedJWT jwt = new SignedJWT(
                     new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(RSA_KEY.getKeyID()).build(), claims);
             jwt.sign(new RSASSASigner(RSA_KEY));
