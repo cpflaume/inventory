@@ -60,6 +60,41 @@ export interface GroupDepotMapping {
   role: DepotRole;
 }
 
+// ---- Audit-Log ----
+
+export type AuditAction = 'LOGIN' | 'LOGIN_FAILED' | 'CREATE' | 'UPDATE' | 'DELETE';
+
+export interface AuditLogView {
+  id: string;
+  occurredAt: string;
+  action: AuditAction;
+  method?: string | null;
+  path?: string | null;
+  statusCode?: number | null;
+  actorUserId?: string | null;
+  actorUsername?: string | null;
+  depotId?: string | null;
+  ipAddress?: string | null;
+}
+
+export interface AuditPage {
+  content: AuditLogView[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface AuditQuery {
+  action?: AuditAction | '';
+  actor?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}
+
 export interface Depot {
   id: string;
   name: string;

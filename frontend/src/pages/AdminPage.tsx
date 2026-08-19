@@ -19,7 +19,29 @@ export default function AdminPage() {
       </div>
       <UsersSection />
       <GroupsSection />
+      <AuditSection />
     </div>
+  );
+}
+
+/** Navigations-Eintrag zur Audit-Log-Ansicht (nur für Admins erreichbar). */
+function AuditSection() {
+  return (
+    <section className="space-y-3">
+      <h2 className="font-semibold text-moos-700">Audit-Log</h2>
+      <Link to="/admin/audit" className="block">
+        <Card className="flex items-center gap-3 p-4 transition hover:ring-moos-300">
+          <span className="text-2xl">📜</span>
+          <div>
+            <p className="font-semibold text-moos-800">Audit-Log ansehen</p>
+            <p className="text-sm text-moos-500">
+              Logins und alle Änderungen — wer wann was gemacht hat, filterbar.
+            </p>
+          </div>
+          <span className="ml-auto text-moos-400">→</span>
+        </Card>
+      </Link>
+    </section>
   );
 }
 

@@ -1,6 +1,8 @@
 // Schlanker, typsicherer API-Client (fetch). Basis-URL ist relativ (/api),
 // im Dev über den Vite-Proxy, in Produktion über Caddy an denselben Host.
 import type {
+  AuditPage,
+  AuditQuery,
   AuthResponse,
   BoxContentsView,
   DefectReport,
@@ -130,6 +132,20 @@ export const api = {
     http<GroupDepotMapping>(`/admin/groups/${id}/depots`, { method: 'POST', body: JSON.stringify(body) }),
   unmapGroupDepot: (id: string, depotId: string) =>
     http<void>(`/admin/groups/${id}/depots/${depotId}`, { method: 'DELETE' }),
+
+  // ---- Audit-Log (nur Admin) ----
+  auditLogs: (query: AuditQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.action) params.set('action', query.action);
+    if (query.actor?.trim()) params.set('actor', query.actor.trim());
+    if (query.q?.trim()) params.set('q', query.q.trim());
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.page != null) params.set('page', String(query.page));
+    if (query.size != null) params.set('size', String(query.size));
+    const qs = params.toString();
+    return http<AuditPage>(`/admin/audit-logs${qs ? `?${qs}` : ''}`);
+  },
 
   // ---- Fachdaten ----
   listDepots: () => http<Depot[]>('/depots'),
