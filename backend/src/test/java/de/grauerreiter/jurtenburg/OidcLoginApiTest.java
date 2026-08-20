@@ -65,7 +65,10 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
                       "authorization_endpoint": "%1$s/authorize",
                       "token_endpoint": "%1$s/token",
                       "userinfo_endpoint": "%1$s/userinfo",
-                      "jwks_uri": "%1$s/jwks"
+                      "jwks_uri": "%1$s/jwks",
+                      "response_types_supported": ["code"],
+                      "subject_types_supported": ["public"],
+                      "id_token_signing_alg_values_supported": ["RS256"]
                     }""".formatted(ISSUER)));
             IDP.createContext("/jwks", ex -> respondJson(ex, new JWKSet(RSA_KEY.toPublicJWK()).toString(true)));
             IDP.createContext("/token", ex -> respondJson(ex, """

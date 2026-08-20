@@ -64,23 +64,17 @@ Deployment (Env + Client-Secret) steht in `cpflaume/copf-demo-gitops` → `docs/
 
 ## Troubleshooting
 
-- **Discovery/Token mit `Content-Type: text/html`:** Nextcloud liefert
-  `/.well-known/openid-configuration` (und teils die Token-Antwort) als JSON aus, deklariert dabei
-  aber `text/html`. Die Discovery (`OidcClientRegistrationRepository`) parst die Antwort selbst
-  (JSON-Body statt Konverter-Auswahl über den `Content-Type`); der Token-Client
-  (`OidcClientConfig#oidcTokenResponseClient`) akzeptiert `text/html` explizit als Token-Media-Type,
-  sodass der Login trotzdem funktioniert.
 - **Redirect auf `…/index.php/.well-known/…`:** Nextcloud stellt die Discovery spec-konform unter
   `${issuer}/.well-known/openid-configuration` bereit, leitet dort aber per HTTP-Redirect auf den
-  tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. Sowohl die
-  Discovery als auch der Token-Client folgen Redirects (außer HTTPS→HTTP), sodass die Default-URL
-  direkt funktioniert — `OIDC_ISSUER_URI` bleibt die Basis-URL.
+  tatsächlichen Endpunkt `${issuer}/index.php/.well-known/openid-configuration` um. Die Discovery der
+  Bibliothek (`ClientRegistrations.fromIssuerLocation`) folgt GET-Redirects von sich aus, sodass die
+  Default-URL direkt funktioniert — `OIDC_ISSUER_URI` bleibt die Basis-URL.
 - **E-Mail/Name landen auf „user", keine Gruppen gemappt:** Der IdP legt die Profil-Claims nicht
   ins ID-Token, sondern nur in die UserInfo-Antwort. Das Backend ruft UserInfo automatisch ab; bleibt
   das Problem, im IdP prüfen, dass die Scopes `profile email groups` freigegeben sind und der
   Gruppen-Claim (`OIDC_GROUPS_CLAIM`, Default `groups`) tatsächlich unter diesem Namen ausgeliefert
   wird. Discovery muss zudem ein `userinfo_endpoint` melden (bei Nextcloud gegeben).
-- **Discovery liefert eine HTML-Seite (`… war HTML statt JSON`):** Bekommt der Client trotz
-  Redirect-Folgen HTML statt JSON, antwortet unter der Discovery-URL nicht der OIDC-Provider, sondern
-  die Nextcloud-Oberfläche (Login-/Startseite). Dann Issuer/Discovery-Route des IdP prüfen (App
-  „OpenID Connect Identity Provider" aktiviert? Well-Known-Redirect auf den `oidc`-Endpunkt gesetzt?).
+- **Discovery schlägt fehl (`OIDC-Discovery fehlgeschlagen`):** Antwortet unter der Discovery-URL
+  nicht der OIDC-Provider (z.B. eine HTML-Login-/Startseite statt des JSON-Dokuments), scheitert die
+  Discovery. Dann Issuer/Discovery-Route des IdP prüfen (App „OpenID Connect Identity Provider"
+  aktiviert? Well-Known-Redirect auf den `oidc`-Endpunkt gesetzt?).
