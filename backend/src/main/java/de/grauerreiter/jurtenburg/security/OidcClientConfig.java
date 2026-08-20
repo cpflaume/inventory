@@ -8,12 +8,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 
 /**
- * Aktiviert den bibliotheksbasierten OIDC-Login — nur wenn {@code app.oidc.enabled=true}. Ist OIDC
- * aus, existiert keine dieser Beans und {@link SecurityConfig} baut die Filterkette ohne OAuth2.
- *
- * <p>Die eigentliche Protokoll-Arbeit (Authorization Code + PKCE, Token-Austausch,
- * ID-Token-/JWKS-Verifikation, Nonce, UserInfo-Merge) erledigt die Bibliothek; hier werden nur die
- * Bausteine (Discovery, zustandsloses Cookie, Handler) zusammengesteckt.</p>
+ * Definiert die OIDC-Beans — nur wenn {@code app.oidc.enabled=true}. Ist OIDC aus, existieren
+ * weder diese Beans noch der {@link OidcLoginConfigurer}, und {@link SecurityConfig} baut die
+ * Filterkette rein lokal (App-JWT). Die eigentliche Verdrahtung des Logins steht im
+ * {@link OidcLoginConfigurer}.
  */
 @Configuration
 @ConditionalOnProperty(name = "app.oidc.enabled", havingValue = "true")
@@ -31,27 +29,8 @@ public class OidcClientConfig {
     }
 
     @Bean
-    public OidcCookieAuthorizationRequestRepository oidcCookieAuthorizationRequestRepository(
-            JwtProperties jwtProps, OidcProperties oidcProps) {
-        return new OidcCookieAuthorizationRequestRepository(jwtProps, oidcProps);
-    }
-
-    @Bean
-    public OidcAuthenticationSuccessHandler oidcAuthenticationSuccessHandler(OidcProperties props,
-            JwtService jwtService, UserProvisioningService provisioning, AuditService audit) {
-        return new OidcAuthenticationSuccessHandler(props, jwtService, provisioning, audit);
-    }
-
-    @Bean
-    public OidcAuthenticationFailureHandler oidcAuthenticationFailureHandler(OidcProperties props) {
-        return new OidcAuthenticationFailureHandler(props);
-    }
-
-    @Bean
-    public OidcLoginConfigurer oidcLoginConfigurer(ClientRegistrationRepository clients,
-            OidcCookieAuthorizationRequestRepository authorizationRequestRepository,
-            OidcAuthenticationSuccessHandler successHandler,
-            OidcAuthenticationFailureHandler failureHandler) {
-        return new OidcLoginConfigurer(clients, authorizationRequestRepository, successHandler, failureHandler);
+    public OidcLoginConfigurer oidcLoginConfigurer(ClientRegistrationRepository clients, OidcProperties props,
+            JwtProperties jwtProps, JwtService jwtService, UserProvisioningService provisioning, AuditService audit) {
+        return new OidcLoginConfigurer(clients, props, jwtProps, jwtService, provisioning, audit);
     }
 }
