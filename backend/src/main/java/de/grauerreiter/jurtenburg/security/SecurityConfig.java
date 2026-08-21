@@ -4,6 +4,7 @@ import de.grauerreiter.jurtenburg.service.AuditService;
 import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -57,7 +58,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+            ObjectProvider<OidcLoginConfigurer> oidcLoginConfigurer) throws Exception {
+        // Nur vorhanden, wenn app.oidc.enabled=true — dann wird der bibliotheksbasierte OIDC-Login
+        // (oauth2Login) angedockt. Ist OIDC aus, bleibt die Kette rein lokal (App-JWT).
+        OidcLoginConfigurer oidc = oidcLoginConfigurer.getIfAvailable();
+        if (oidc != null) {
+            oidc.configure(http);
+        }
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())

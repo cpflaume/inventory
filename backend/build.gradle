@@ -31,9 +31,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    // spring-security-oauth2-jose bringt den Nimbus-JWT-Decoder mit — genutzt vom OIDC-Auth-Provider
-    // (OidcService) zur JWKS-Verifikation des ID-Tokens.
-    implementation 'org.springframework.security:spring-security-oauth2-jose'
+    // Spring Security OAuth2 Client: die Standard-Bibliothek für den OIDC-Login (Authorization
+    // Code + PKCE, Discovery, JWKS-Verifikation des ID-Tokens, Nonce/State, UserInfo-Merge).
+    // Ersetzt die früher händisch gebaute Naht; bringt oauth2-jose (Nimbus) transitiv mit.
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'

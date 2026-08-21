@@ -31,10 +31,11 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * End-to-end des OIDC-Logins gegen einen eingebetteten IdP-Stub (JDK-HttpServer): Discovery,
- * JWKS und ein per Nimbus RS256-signiertes ID-Token. Deckt den ganzen Weg ab —
- * {@code /login} (Weiterleitung + State-Cookie) → {@code /callback} (Code-Tausch, ID-Token-
- * Verifikation, Provisionierung) → App-JWT im Fragment → {@code /me} mit diesem Token.
+ * End-to-end des OIDC-Logins (Spring-Security-OAuth2-Client) gegen einen eingebetteten IdP-Stub
+ * (JDK-HttpServer): Discovery, JWKS und ein per Nimbus RS256-signiertes ID-Token. Deckt den ganzen
+ * Weg ab — {@code /login/oidc} (Weiterleitung + {@code oidc_auth}-Cookie) → {@code /callback}
+ * (Code-Tausch, ID-Token-Verifikation, Provisionierung) → App-JWT im Fragment → {@code /me} mit
+ * diesem Token.
  */
 class OidcLoginApiTest extends AbstractIntegrationTest {
 
@@ -64,7 +65,10 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
                       "authorization_endpoint": "%1$s/authorize",
                       "token_endpoint": "%1$s/token",
                       "userinfo_endpoint": "%1$s/userinfo",
-                      "jwks_uri": "%1$s/jwks"
+                      "jwks_uri": "%1$s/jwks",
+                      "response_types_supported": ["code"],
+                      "subject_types_supported": ["public"],
+                      "id_token_signing_alg_values_supported": ["RS256"]
                     }""".formatted(ISSUER)));
             IDP.createContext("/jwks", ex -> respondJson(ex, new JWKSet(RSA_KEY.toPublicJWK()).toString(true)));
             IDP.createContext("/token", ex -> respondJson(ex, """
@@ -106,7 +110,7 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.enabled", org.hamcrest.Matchers.is(true)));
 
         // 1) Login-Start → 302 zum IdP, State-Cookie gesetzt.
-        var loginResult = anon.perform(get("/api/auth/oidc/login"))
+        var loginResult = anon.perform(get("/api/auth/oidc/login/oidc"))
                 .andExpect(status().isFound())
                 .andReturn();
         String location = loginResult.getResponse().getHeader("Location");
@@ -115,14 +119,17 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
         org.junit.jupiter.api.Assertions.assertTrue(location.startsWith(ISSUER + "/authorize"));
 
         var params = UriComponentsBuilder.fromUriString(location).build().getQueryParams();
-        String state = params.getFirst("state");
+        // getQueryParams() liefert die Werte URL-kodiert; ein echter Servlet-Callback bekäme sie
+        // dekodiert. Spring erzeugt den State als Standard-Base64 (mit '='-Padding → '%3D' in der
+        // URL), daher hier dekodieren, sonst schlägt der State-Abgleich im Callback fehl.
+        String state = dec(params.getFirst("state"));
         String nonce = params.getFirst("nonce");
         org.junit.jupiter.api.Assertions.assertEquals("S256", params.getFirst("code_challenge_method"));
         org.junit.jupiter.api.Assertions.assertNotNull(params.getFirst("code_challenge"));
 
         // Der IdP-Stub soll dieses Nonce ins ID-Token schreiben.
         NONCE.set(nonce);
-        Cookie stateCookie = new Cookie("oidc_state", cookieValue(setCookie));
+        Cookie stateCookie = new Cookie("oidc_auth", cookieValue(setCookie));
 
         // 2) Callback → 302 ans Frontend mit App-Token im Fragment.
         var cbResult = anon.perform(get("/api/auth/oidc/callback")
@@ -152,15 +159,15 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
         MINIMAL_ID_TOKEN.set(true);
         MockMvc anon = anonymousMockMvc(context);
 
-        var loginResult = anon.perform(get("/api/auth/oidc/login")).andReturn();
+        var loginResult = anon.perform(get("/api/auth/oidc/login/oidc")).andReturn();
         var params = UriComponentsBuilder.fromUriString(loginResult.getResponse().getHeader("Location"))
                 .build().getQueryParams();
         NONCE.set(params.getFirst("nonce"));
-        Cookie stateCookie = new Cookie("oidc_state", cookieValue(loginResult.getResponse().getHeader("Set-Cookie")));
+        Cookie stateCookie = new Cookie("oidc_auth", cookieValue(loginResult.getResponse().getHeader("Set-Cookie")));
 
         var cbResult = anon.perform(get("/api/auth/oidc/callback")
                         .param("code", "dummy-auth-code")
-                        .param("state", params.getFirst("state"))
+                        .param("state", dec(params.getFirst("state")))
                         .cookie(stateCookie))
                 .andExpect(status().isFound())
                 .andReturn();
@@ -178,13 +185,13 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
     @Test
     void callbackWithMismatchedStateRedirectsWithError() throws Exception {
         MockMvc anon = anonymousMockMvc(context);
-        String setCookie = anon.perform(get("/api/auth/oidc/login"))
+        String setCookie = anon.perform(get("/api/auth/oidc/login/oidc"))
                 .andReturn().getResponse().getHeader("Set-Cookie");
 
         anon.perform(get("/api/auth/oidc/callback")
                         .param("code", "x")
                         .param("state", "not-the-cookie-state")
-                        .cookie(new Cookie("oidc_state", cookieValue(setCookie))))
+                        .cookie(new Cookie("oidc_auth", cookieValue(setCookie))))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("#error=invalid_state")));
     }
@@ -228,11 +235,16 @@ class OidcLoginApiTest extends AbstractIntegrationTest {
     }
 
     private static String cookieValue(String setCookieHeader) {
-        // "oidc_state=<jwt>; Path=...; HttpOnly; ..." → nur den Wert vor dem ersten ';'.
-        String prefix = "oidc_state=";
+        // "oidc_auth=<payload.mac>; Path=...; HttpOnly; ..." → nur den Wert vor dem ersten ';'.
+        String prefix = "oidc_auth=";
         int start = setCookieHeader.indexOf(prefix) + prefix.length();
         int end = setCookieHeader.indexOf(';', start);
         return setCookieHeader.substring(start, end < 0 ? setCookieHeader.length() : end);
+    }
+
+    /** URL-Query-Wert dekodieren (wie es ein echter Servlet-Callback täte). */
+    private static String dec(String value) {
+        return value == null ? null : java.net.URLDecoder.decode(value, StandardCharsets.UTF_8);
     }
 
     private static String fragmentValue(String url, String key) {

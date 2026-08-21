@@ -3,7 +3,9 @@ package de.grauerreiter.jurtenburg.security;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 /**
  * OIDC-Konfiguration (Single-Sign-On, z.B. Nextcloud). Standardmäßig <em>deaktiviert</em>:
@@ -13,7 +15,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * gesetzt sein (siehe {@link #validate()}).
  *
  * <p>Nur der <em>Issuer</em> wird konfiguriert; die konkreten Endpunkte (authorization/token/jwks)
- * bezieht {@link OidcService} per Discovery aus {@code ${issuerUri}/.well-known/openid-configuration}.</p>
+ * bezieht {@link OidcClientRegistrationRepository} per Discovery aus
+ * {@code ${issuerUri}/.well-known/openid-configuration}.</p>
  */
 @ConfigurationProperties(prefix = "app.oidc")
 public class OidcProperties {
@@ -33,6 +36,14 @@ public class OidcProperties {
 
     /** Angeforderte Scopes. {@code openid} ist Pflicht; {@code groups} liefert die Gruppen. */
     private String scopes = "openid profile email groups";
+
+    /**
+     * Client-Authentisierung am Token-Endpunkt. Erlaubt: {@code client_secret_basic} (Default, von
+     * Nextcloud und den meisten IdP genutzt), {@code client_secret_post} oder {@code none}
+     * (öffentlicher Client, nur PKCE — dann ist kein Client-Secret nötig). Macht einen IdP-Wechsel
+     * mit abweichender Methode ohne Code-Änderung möglich.
+     */
+    private String clientAuthMethod = "client_secret_basic";
 
     /** Name des Claims, aus dem die Gruppennamen gelesen werden (Nextcloud: {@code groups}). */
     private String groupsClaim = "groups";
@@ -70,14 +81,32 @@ public class OidcProperties {
         return redirectUri.startsWith("https://");
     }
 
+    /**
+     * Client-Auth-Methode als Spring-Konstante (siehe {@link #clientAuthMethod}). Wirft bei einem
+     * unbekannten Wert — so schlägt {@link #validate()} beim Start fehl statt erst beim Login.
+     */
+    public ClientAuthenticationMethod clientAuthenticationMethod() {
+        return switch (clientAuthMethod.trim().toLowerCase(Locale.ROOT)) {
+            case "client_secret_basic" -> ClientAuthenticationMethod.CLIENT_SECRET_BASIC;
+            case "client_secret_post" -> ClientAuthenticationMethod.CLIENT_SECRET_POST;
+            case "none" -> ClientAuthenticationMethod.NONE;
+            default -> throw new IllegalStateException("app.oidc.client-auth-method muss "
+                    + "client_secret_basic, client_secret_post oder none sein: " + clientAuthMethod);
+        };
+    }
+
     /** Fail-fast beim Start, wenn OIDC aktiviert, aber unvollständig konfiguriert ist. */
     public void validate() {
         if (!enabled) {
             return;
         }
+        ClientAuthenticationMethod method = clientAuthenticationMethod();
         requireSet("app.oidc.issuer-uri", issuerUri);
         requireSet("app.oidc.client-id", clientId);
-        requireSet("app.oidc.client-secret", clientSecret);
+        // Ein öffentlicher Client (none) authentisiert sich nur per PKCE und hat kein Secret.
+        if (!ClientAuthenticationMethod.NONE.equals(method)) {
+            requireSet("app.oidc.client-secret", clientSecret);
+        }
         requireSet("app.oidc.redirect-uri", redirectUri);
         // HTTPS erzwingen: Discovery/JWKS/Token-Austausch (Issuer) und der Code-Rückweg
         // (Redirect-URI) laufen sonst im Klartext und wären MITM-/Abfangbar. Loopback bleibt
@@ -157,6 +186,15 @@ public class OidcProperties {
 
     public void setScopes(String scopes) {
         this.scopes = scopes;
+    }
+
+    public String getClientAuthMethod() {
+        return clientAuthMethod;
+    }
+
+    public void setClientAuthMethod(String clientAuthMethod) {
+        this.clientAuthMethod = clientAuthMethod == null || clientAuthMethod.isBlank()
+                ? "client_secret_basic" : clientAuthMethod;
     }
 
     public String getGroupsClaim() {
