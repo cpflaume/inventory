@@ -1,16 +1,33 @@
 name: CI
 
 # Qualitäts-Gate auf jedem PR / Push: Backend, Frontend, E2E getrennt.
+# paths-ignore: reine Doku-Änderungen lösen kein (teures) CI aus.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   workflow_dispatch:
     inputs:
       record_all_videos:
         description: "E2E: Videos ALLER Tests aufzeichnen (Default: nur fehlgeschlagene)"
         type: boolean
         default: false
+
+# Neuere Pushes auf denselben Branch lösen den vorherigen Lauf ab (spart
+# Minuten). Auf main läuft jeder Commit voll durch (cancel nur bei PRs).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -148,9 +165,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install Playwright Chromium (+ deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: frontend
+        run: npx playwright install-deps chromium
 
       - name: Run E2E
         working-directory: frontend
