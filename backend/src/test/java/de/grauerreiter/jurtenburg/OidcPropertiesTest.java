@@ -1,10 +1,12 @@
 package de.grauerreiter.jurtenburg;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import de.grauerreiter.jurtenburg.security.OidcProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 /** Schnelle Unit-Tests der OIDC-Konfig-Validierung (fail-fast + HTTPS-Pflicht). */
 class OidcPropertiesTest {
@@ -62,5 +64,38 @@ class OidcPropertiesTest {
                 "https://jurtenburg.copf-demo.de/api/auth/oidc/callback");
         p.setScopes("profile email");
         assertThrows(IllegalStateException.class, p::validate);
+    }
+
+    @Test
+    void clientAuthMethodDefaultsToBasic() {
+        assertEquals(ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+                new OidcProperties().clientAuthenticationMethod());
+    }
+
+    @Test
+    void clientAuthMethodIsConfigurable() {
+        OidcProperties p = enabled("https://wolke.grauer-reiter.de",
+                "https://jurtenburg.copf-demo.de/api/auth/oidc/callback");
+        p.setClientAuthMethod("client_secret_post");
+        assertDoesNotThrow(p::validate);
+        assertEquals(ClientAuthenticationMethod.CLIENT_SECRET_POST, p.clientAuthenticationMethod());
+    }
+
+    @Test
+    void unknownClientAuthMethodFailsFast() {
+        OidcProperties p = enabled("https://wolke.grauer-reiter.de",
+                "https://jurtenburg.copf-demo.de/api/auth/oidc/callback");
+        p.setClientAuthMethod("mtls");
+        assertThrows(IllegalStateException.class, p::validate);
+    }
+
+    @Test
+    void publicClientNeedsNoSecret() {
+        // none = öffentlicher Client (nur PKCE): Secret ist dann nicht Pflicht.
+        OidcProperties p = enabled("https://wolke.grauer-reiter.de",
+                "https://jurtenburg.copf-demo.de/api/auth/oidc/callback");
+        p.setClientAuthMethod("none");
+        p.setClientSecret("");
+        assertDoesNotThrow(p::validate);
     }
 }

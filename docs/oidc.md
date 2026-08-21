@@ -52,9 +52,10 @@ Die Redirect-URI muss exakt stimmen (`https`, kein Trailing-Slash) und liegt bew
 | `OIDC_ENABLED` | – | `true` aktiviert OIDC (Default `false`). |
 | `OIDC_ISSUER_URI` | ✓ | Basis-URL der Nextcloud (z. B. `https://wolke.grauer-reiter.de`, ohne `/.well-known/...`); erwarteter `iss`. Muss HTTPS sein. |
 | `OIDC_CLIENT_ID` | ✓ | Client-ID aus dem IdP. |
-| `OIDC_CLIENT_SECRET` | ✓ | Client-Secret aus dem IdP — **Secret, nie ins Repo**. |
+| `OIDC_CLIENT_SECRET` | (✓) | Client-Secret aus dem IdP — **Secret, nie ins Repo**. Pflicht außer bei `OIDC_CLIENT_AUTH_METHOD=none`. |
 | `OIDC_REDIRECT_URI` | ✓ | Callback-URL, identisch zur Redirect-URI im IdP. |
 | `OIDC_SCOPES` | – | Default `openid profile email groups` (`openid` ist Pflicht). |
+| `OIDC_CLIENT_AUTH_METHOD` | – | Client-Authentisierung am Token-Endpunkt: `client_secret_basic` (Default), `client_secret_post` oder `none` (öffentlicher Client, nur PKCE). Nur ändern, wenn der IdP es verlangt. |
 | `OIDC_GROUPS_CLAIM` | – | Name des Gruppen-Claims (Default `groups`). |
 | `OIDC_AUTO_CREATE_GROUPS` | – | Fehlende Claim-Gruppen lokal anlegen (Default `true`). |
 | `OIDC_POST_LOGIN_REDIRECT_URI` | – | Frontend-Ziel; leer = Origin der Redirect-URI + `/auth/callback`. |

@@ -4,7 +4,6 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.ClientRegistrations;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 /**
  * Liefert die {@link ClientRegistration} des IdP für die Spring-Security-OAuth2-Client-Bibliothek.
@@ -63,7 +62,7 @@ public class OidcClientRegistrationRepository implements ClientRegistrationRepos
                     .registrationId(REGISTRATION_ID)
                     .clientId(props.getClientId())
                     .clientSecret(props.getClientSecret())
-                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .clientAuthenticationMethod(props.clientAuthenticationMethod())
                     .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                     .redirectUri(props.getRedirectUri())
                     .scope(props.scopeList())
