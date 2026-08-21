@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1
 # Multi-stage, multi-arch-fähig (amd64 + arm64 für Oracle Cloud / Ampere).
-
-FROM node:24-alpine AS build
+#
+# Wie im Backend: Der Vite-Build erzeugt reine statische Assets (arch-unabhängig).
+# Der Build-Stage läuft deshalb IMMER nativ auf der Build-Plattform
+# ($BUILDPLATFORM) – npm/Vite wird also nur einmal (amd64) ausgeführt und NICHT
+# unter QEMU-Emulation je Ziel-Arch. Nur der triviale nginx-Runtime-Stage
+# (statische Dateien kopieren) wird pro Ziel-Arch gebaut.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
