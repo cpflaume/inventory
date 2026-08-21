@@ -8,8 +8,18 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 /**
  * Liefert die {@link ClientRegistration} des IdP für die Spring-Security-OAuth2-Client-Bibliothek.
- * Die Endpunkte (authorization/token/jwks/userinfo) kommen per OIDC-Discovery aus dem Issuer;
- * das Ergebnis wird gecacht (erste Nutzung lädt, danach in-memory).
+ *
+ * <p><strong>Warum überhaupt ein Repository?</strong> {@code oauth2Login} kennt den IdP nicht selbst,
+ * sondern schlägt ihn zur Laufzeit über ein {@link ClientRegistrationRepository} nach
+ * ({@code findByRegistrationId("oidc")}). Das ist der Kontrakt der Bibliothek — die frühere
+ * händische Implementierung brauchte ihn nicht, weil sie die Authorize-URL und den Token-Tausch
+ * selbst baute und es keine „Registration" gab.</p>
+ *
+ * <p><strong>Warum eigene Implementierung statt {@code InMemoryClientRegistrationRepository}?</strong>
+ * Die eingebaute In-Memory-Variante ist <em>eager</em>: sie verlangt eine fertig gebaute
+ * {@link ClientRegistration}, d.h. Discovery schon beim Start. Diese hier lädt <em>lazy</em> beim
+ * ersten Login und cacht danach — so bootet die App auch, wenn der IdP (Nextcloud) kurz nicht
+ * erreichbar ist; nur der Login schlägt in dem Fenster fehl.</p>
  *
  * <p>Die Discovery selbst macht {@link ClientRegistrations#fromIssuerLocation} (Bibliothek):
  * Abruf des {@code /.well-known/openid-configuration}, JSON-Parsing und Redirect-Folgen
