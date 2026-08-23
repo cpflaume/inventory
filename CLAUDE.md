@@ -55,8 +55,8 @@ Ist lokal kein JDK 25 installiert (Gradle-Toolchain schlägt fehl: „Cannot fin
 matching languageVersion=25"), lässt sich das Backend trotzdem prüfen, indem die Toolchain
 **vorübergehend** heruntergestuft wird — der Code ist 21-kompatibel:
 1. In `backend/build.gradle` `JavaLanguageVersion.of(25)` → `of(21)` setzen.
-2. Kompilieren + Unit-Tests laufen lassen (Integrationstests brauchen Docker; ohne Docker gezielt die
-   Docker-freien Tests wählen): `./gradlew compileJava compileTestJava test --tests 'de.grauerreiter.jurtenburg.FeedbackServiceTest'`.
+2. Kompilieren + Unit-Tests laufen lassen. Integrationstests brauchen Docker; ohne Docker lassen sich
+   Docker-freie Tests gezielt einzeln auswählen (`--tests …`).
 3. **Downgrade wieder rückgängig machen** (`of(21)` → `of(25)`) — nie mit gestufter Toolchain committen.
 
 ## Tests
