@@ -221,19 +221,29 @@ function Shelf({
   );
 }
 
+// Grafik-Raster ist auf 4×3 = 12 Zellen begrenzt; darüber zeigt die letzte
+// Zelle „+N". Spaltenzahl ≈ √Zellen (max. 4), sodass das Raster eher breit als
+// hoch wächst: 2 → 2×1, 3 → 2×2, 6 → 3×2, 12 → 4×3.
+const CELL_GRID_MAX = 12;
+
 /**
  * Lose Gegenstände eines Regalfachs als Grafik-Raster. Mehrere Icons liegen
- * nebeneinander (Spaltenzahl ≈ √Anzahl, max. 12), sodass man auf einen Blick
- * sieht, was im Fach liegt; der Name steht im Tooltip, Details per Klick.
+ * nebeneinander, sodass man auf einen Blick sieht, was im Fach liegt; der Name
+ * steht im Tooltip, Details per Klick.
  */
 function CellItems({ items }: { items: Item[] }) {
-  const cols = Math.min(12, Math.ceil(Math.sqrt(items.length)));
+  const overflow = items.length > CELL_GRID_MAX;
+  // Bei Überlauf bleibt Platz für die „+N"-Zelle.
+  const shown = overflow ? items.slice(0, CELL_GRID_MAX - 1) : items;
+  const cellCount = shown.length + (overflow ? 1 : 0);
+  const cols = Math.min(4, Math.ceil(Math.sqrt(cellCount)));
+
   return (
     <div
       className="relative z-10 grid h-full w-full gap-1 p-1"
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      {items.map((it) => {
+      {shown.map((it) => {
         const { Icon, label } = iconForItem(it.name);
         return (
           <span
@@ -248,6 +258,14 @@ function CellItems({ items }: { items: Item[] }) {
           </span>
         );
       })}
+      {overflow && (
+        <span
+          className="flex aspect-square items-center justify-center rounded bg-moos-700/90 text-xs font-semibold text-white shadow-sm ring-1 ring-black/10"
+          title={`${items.length - shown.length} weitere Gegenstände`}
+        >
+          +{items.length - shown.length}
+        </span>
+      )}
     </div>
   );
 }
