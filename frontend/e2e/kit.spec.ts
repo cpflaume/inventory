@@ -26,7 +26,9 @@ test('Bausatz ins Lager übernehmen', async ({ page }) => {
   await page.getByRole('button', { name: /Fertig/ }).click();
 
   // Die neue Kiste erscheint als freistehende Kiste im virtuellen Lager.
-  await page.getByRole('link', { name: /Lager/ }).click();
+  // Zur Lager-Ansicht über den unteren Tab (der Header-Link „Zurück zur Lager-Auswahl"
+  // träfe /Lager/ ebenfalls, daher auf die Navigationsleiste eingrenzen).
+  await page.locator('nav').getByRole('link', { name: /Lager/ }).click();
   await expect(page.getByRole('heading', { name: /Virtuelles Lager/ })).toBeVisible();
   await expect(page.getByText('Kothe – E2E')).toBeVisible();
 });
