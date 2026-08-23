@@ -1,6 +1,8 @@
 package de.grauerreiter.jurtenburg.web;
 
 import de.grauerreiter.jurtenburg.service.KitService;
+import de.grauerreiter.jurtenburg.web.Dtos.KitInstantiateRequest;
+import de.grauerreiter.jurtenburg.web.Dtos.KitInstantiationResponse;
 import de.grauerreiter.jurtenburg.web.Dtos.KitRequest;
 import de.grauerreiter.jurtenburg.web.Dtos.KitResponse;
 import jakarta.validation.Valid;
@@ -54,5 +56,13 @@ public class KitController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID depotId, @PathVariable UUID kitId) {
         kitService.delete(depotId, kitId);
+    }
+
+    /** Bausatz ins Lager übernehmen: neue Kiste + alle Positionen als neue Gegenstände. */
+    @PostMapping("/{kitId}/instantiate")
+    @ResponseStatus(HttpStatus.CREATED)
+    public KitInstantiationResponse instantiate(@PathVariable UUID depotId, @PathVariable UUID kitId,
+            @Valid @RequestBody KitInstantiateRequest req) {
+        return kitService.instantiate(depotId, kitId, req);
     }
 }

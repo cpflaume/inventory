@@ -13,6 +13,7 @@ import type {
   InventoryView,
   Item,
   Kit,
+  KitInstantiationResult,
   Location,
   MeResponse,
   OidcConfig,
@@ -171,6 +172,11 @@ export const api = {
 
   listKits: (d: string) => http<Kit[]>(`/depots/${d}/kits`),
   getKit: (d: string, k: string) => http<Kit>(`/depots/${d}/kits/${k}`),
+  instantiateKit: (d: string, k: string, boxLabel: string) =>
+    http<KitInstantiationResult>(`/depots/${d}/kits/${k}/instantiate`, {
+      method: 'POST',
+      body: JSON.stringify({ boxLabel }),
+    }),
 
   inventory: (d: string) => http<InventoryView>(`/depots/${d}/inventory`),
 

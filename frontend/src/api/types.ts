@@ -140,6 +140,13 @@ export interface Kit {
   positions: KitPosition[];
 }
 
+/** Ergebnis der „Bausatz ins Lager übernehmen"-Aktion. */
+export interface KitInstantiationResult {
+  boxId: string;
+  boxLabel: string;
+  itemCount: number;
+}
+
 export interface DefectReport {
   id: string;
   itemId?: string | null;
