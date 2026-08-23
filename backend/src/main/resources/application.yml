@@ -68,3 +68,15 @@ app:
     auto-create-groups: ${OIDC_AUTO_CREATE_GROUPS:true}
     # Ziel im Frontend nach Login (Token/Fehler im URL-Fragment). Leer = aus redirect-uri abgeleitet.
     post-login-redirect-uri: ${OIDC_POST_LOGIN_REDIRECT_URI:}
+  feedback:
+    # In-App-Feedback als GitHub-Issue. Standard: AUS — der Button erscheint nur, wenn aktiviert
+    # UND Token + Repo gesetzt sind. Der Token bleibt serverseitig (privates Repo).
+    enabled: ${FEEDBACK_ENABLED:false}
+    # GitHub-Token mit issues:write auf das Repo (Fine-grained empfohlen); in Produktion als Secret injizieren.
+    token: ${FEEDBACK_GITHUB_TOKEN:}
+    # Ziel-Repository als owner/repo.
+    repository: ${FEEDBACK_GITHUB_REPO:}
+    # GitHub-REST-API-Basis (für GitHub Enterprise anpassbar).
+    api-base-url: ${FEEDBACK_GITHUB_API_BASE_URL:https://api.github.com}
+    # Labels für jedes Feedback-Issue (kommagetrennt).
+    labels: ${FEEDBACK_LABELS:feedback}

@@ -54,6 +54,45 @@ export interface OidcConfig {
   loginUrl: string;
 }
 
+// ---- Feedback ----
+
+/** Ob der In-App-Feedback-Button angezeigt werden soll. */
+export interface FeedbackConfig {
+  enabled: boolean;
+}
+
+/** Client-/Gerätedetails, die dem Feedback als Kontext beigelegt werden. */
+export interface FeedbackClientInfo {
+  userAgent?: string;
+  language?: string;
+  platform?: string;
+  deviceType?: string;
+  viewport?: string;
+  screen?: string;
+  timezone?: string;
+}
+
+/** Ein Eintrag im Navigationsverlauf (Pfad + Zeitpunkt als ISO-String). */
+export interface FeedbackNavEntry {
+  path: string;
+  at: string;
+}
+
+/** Feedback samt Kontext, wie es ans Backend geht. */
+export interface FeedbackRequest {
+  message: string;
+  path?: string;
+  url?: string;
+  client?: FeedbackClientInfo;
+  history?: FeedbackNavEntry[];
+}
+
+/** Antwort nach erfolgreichem Anlegen: Nummer und Link des GitHub-Issues. */
+export interface FeedbackResponse {
+  issueNumber: number;
+  issueUrl: string;
+}
+
 export interface GroupDepotMapping {
   depotId: string;
   depotName: string;
