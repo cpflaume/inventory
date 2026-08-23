@@ -8,6 +8,9 @@ import type {
   DefectReport,
   Depot,
   DepotRole,
+  FeedbackConfig,
+  FeedbackRequest,
+  FeedbackResponse,
   GroupDepotMapping,
   GroupSummary,
   InventoryView,
@@ -108,6 +111,11 @@ export const api = {
     http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => http<MeResponse>('/auth/me'),
   oidcConfig: () => http<OidcConfig>('/auth/oidc/config'),
+
+  // ---- Feedback ----
+  feedbackConfig: () => http<FeedbackConfig>('/feedback/config'),
+  sendFeedback: (body: FeedbackRequest) =>
+    http<FeedbackResponse>('/feedback', { method: 'POST', body: JSON.stringify(body) }),
 
   // ---- Admin ----
   adminUsers: () => http<UserSummary[]>('/admin/users'),

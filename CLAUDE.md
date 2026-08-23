@@ -34,6 +34,12 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
   → neue Mutations-Endpunkte sind ohne Zutun abgedeckt. Login wird explizit im `AuthController`/OIDC-Callback
   erfasst (auch Fehlschläge). Einträge liegen in `audit_log` (denormalisierter `actor_username`, kein FK).
   Ansicht/Filter nur für Admins über `/api/admin/audit-logs` → Frontend `AuditLogPage` (Link auf der Admin-Seite).
+- **Feedback** (`web/FeedbackController`, `service/FeedbackService`, `config/FeedbackProperties`):
+  In-App-Feedback wird als **GitHub-Issue** im Projekt-Repo angelegt (mit Kontext: Seite, Client-/
+  Gerätedetails, Navigationsverlauf). Standard AUS (`app.feedback.enabled`); Button erscheint nur, wenn
+  aktiv **und** Token+Repo gesetzt. Token bleibt serverseitig; Frontend fragt nur `GET /api/feedback/config`.
+  Frontend: `components/FeedbackWidget` (schwebender Button, oberste Router-Ebene), `feedback/`
+  (Kontext-Sammlung). Setup siehe `docs/feedback.md`.
 - **Fehler**: `ApiExceptions.NotFoundException` (404) / `BusinessRuleException` (422).
 - **Bilder/Namen**: keine Modell-Kennung o.ä. in committete Artefakte.
 
