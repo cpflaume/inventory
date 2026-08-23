@@ -6,6 +6,7 @@ import type { BoxView, CellView, Item, ShelfView } from '../api/types';
 import { Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
 import { ItemDialog, ItemRow } from '../components/items';
 import { ChestArt, EmptyCellArt, woodStyle } from '../components/warehouseArt';
+import { iconForItem } from '../components/itemIcons';
 import { LocationDrawer } from '../components/LocationDrawer';
 import type { LocationTarget } from '../components/locationTarget';
 import { useAuth } from '../auth/AuthContext';
@@ -200,14 +201,7 @@ function Shelf({
                   title={`Fach ${r + 1}/${c + 1}`}
                 >
                   {hasLoose ? (
-                    <ul className="relative z-10 m-1 space-y-0.5 rounded bg-white/85 p-1 text-xs text-moos-800 shadow-sm ring-1 ring-black/10">
-                      {cell!.looseItems.map((it) => (
-                        <li key={it.id} className="flex items-center gap-1">
-                          <ConditionDot flag={it.conditionFlag} />
-                          <span className="truncate">{it.name}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <CellItems items={cell!.looseItems} />
                   ) : (
                     <EmptyCellArt seed={cellSeed} />
                   )}
@@ -223,6 +217,37 @@ function Shelf({
         <ShelfFoot />
         <ShelfFoot />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Lose Gegenstände eines Regalfachs als Grafik-Raster. Mehrere Icons liegen
+ * nebeneinander (Spaltenzahl ≈ √Anzahl, max. 4), sodass man auf einen Blick
+ * sieht, was im Fach liegt; der Name steht im Tooltip, Details per Klick.
+ */
+function CellItems({ items }: { items: Item[] }) {
+  const cols = Math.min(4, Math.ceil(Math.sqrt(items.length)));
+  return (
+    <div
+      className="relative z-10 grid h-full w-full gap-1 p-1"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {items.map((it) => {
+        const { Icon, label } = iconForItem(it.name);
+        return (
+          <span
+            key={it.id}
+            className="relative flex aspect-square items-center justify-center rounded bg-white/90 p-1 shadow-sm ring-1 ring-black/10"
+            title={label ? `${it.name} · ${label}` : it.name}
+          >
+            <Icon className="h-full w-full text-moos-700" strokeWidth={1.75} aria-label={it.name} />
+            <span className="absolute -right-0.5 -top-0.5 rounded-full bg-white">
+              <ConditionDot flag={it.conditionFlag} />
+            </span>
+          </span>
+        );
+      })}
     </div>
   );
 }
