@@ -19,14 +19,20 @@ export default function Layout() {
 
   return (
     <div className="mx-auto min-h-screen max-w-5xl pb-24">
-      <header className="no-print sticky top-0 z-30 flex items-center gap-3 bg-moos-700 px-4 py-3 text-white shadow-md">
-        <NavLink to="/" className="text-xl" title="Zur Lager-Auswahl">
-          ⛺
+      <header className="no-print sticky top-0 z-30 bg-moos-700 text-white shadow-md">
+        <NavLink
+          to="/"
+          title="Zurück zur Lager-Auswahl"
+          aria-label="Zurück zur Lager-Auswahl"
+          className="flex items-center gap-3 px-4 py-3 transition hover:bg-moos-600"
+        >
+          <span className="text-xl" aria-hidden="true">⛺</span>
+          <div className="leading-tight">
+            <p className="text-xs uppercase tracking-wide text-moos-200">Jurtenburg</p>
+            <p className="font-semibold">{depot?.name ?? 'Lager'}</p>
+          </div>
+          <span className="ml-auto text-2xl" aria-hidden="true">←</span>
         </NavLink>
-        <div className="leading-tight">
-          <p className="text-xs uppercase tracking-wide text-moos-200">Jurtenburg</p>
-          <p className="font-semibold">{depot?.name ?? 'Lager'}</p>
-        </div>
       </header>
 
       <main className="px-4 pt-4">
