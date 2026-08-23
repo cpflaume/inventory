@@ -50,6 +50,15 @@ cd backend  && ./gradlew test                    # Testcontainers-Postgres (brau
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
+### Backend-Verifikation ohne JDK 25 (z.B. Web-/CI-Sandbox mit nur JDK 21)
+Ist lokal kein JDK 25 installiert (Gradle-Toolchain schlägt fehl: „Cannot find a Java installation …
+matching languageVersion=25"), lässt sich das Backend trotzdem prüfen, indem die Toolchain
+**vorübergehend** heruntergestuft wird — der Code ist 21-kompatibel:
+1. In `backend/build.gradle` `JavaLanguageVersion.of(25)` → `of(21)` setzen.
+2. Kompilieren + Unit-Tests laufen lassen (Integrationstests brauchen Docker; ohne Docker gezielt die
+   Docker-freien Tests wählen): `./gradlew compileJava compileTestJava test --tests 'de.grauerreiter.jurtenburg.FeedbackServiceTest'`.
+3. **Downgrade wieder rückgängig machen** (`of(21)` → `of(25)`) — nie mit gestufter Toolchain committen.
+
 ## Tests
 - Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
   `KitApiTest` (Bausatz anlegen+listen), `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff),
