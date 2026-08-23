@@ -223,11 +223,11 @@ function Shelf({
 
 /**
  * Lose Gegenstände eines Regalfachs als Grafik-Raster. Mehrere Icons liegen
- * nebeneinander (Spaltenzahl ≈ √Anzahl, max. 4), sodass man auf einen Blick
+ * nebeneinander (Spaltenzahl ≈ √Anzahl, max. 12), sodass man auf einen Blick
  * sieht, was im Fach liegt; der Name steht im Tooltip, Details per Klick.
  */
 function CellItems({ items }: { items: Item[] }) {
-  const cols = Math.min(4, Math.ceil(Math.sqrt(items.length)));
+  const cols = Math.min(12, Math.ceil(Math.sqrt(items.length)));
   return (
     <div
       className="relative z-10 grid h-full w-full gap-1 p-1"
