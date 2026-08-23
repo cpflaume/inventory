@@ -160,6 +160,8 @@ export const api = {
   listLocations: (d: string) => http<Location[]>(`/depots/${d}/locations`),
   createLocation: (d: string, body: LocationInput) =>
     http<Location>(`/depots/${d}/locations`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteLocation: (d: string, l: string) =>
+    http<void>(`/depots/${d}/locations/${l}`, { method: 'DELETE' }),
   boxContents: (d: string, l: string) => http<BoxContentsView>(`/depots/${d}/locations/${l}/contents`),
 
   listItems: (d: string) => http<Item[]>(`/depots/${d}/items`),

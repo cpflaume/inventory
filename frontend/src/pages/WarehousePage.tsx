@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { BoxView, CellView, Item, ShelfView } from '../api/types';
 import { Button, Card, ConditionDot, EmptyState, Modal } from '../components/ui';
-import { ItemDialog, ItemRow } from '../components/items';
+import { ConfirmDelete, ItemDialog, ItemRow } from '../components/items';
 import { ChestArt, EmptyCellArt, woodStyle } from '../components/warehouseArt';
 import { LocationDrawer } from '../components/LocationDrawer';
 import type { LocationTarget } from '../components/locationTarget';
@@ -13,10 +13,13 @@ import { useAuth } from '../auth/AuthContext';
 export default function WarehousePage() {
   const { depotId = '' } = useParams();
   const qc = useQueryClient();
-  const { canEdit: canEditFn } = useAuth();
+  const { canEdit: canEditFn, isAdmin, roleForDepot } = useAuth();
   const canEdit = canEditFn(depotId);
+  // Ein ganzes Regal zu löschen ist eingriffsstark → nur Lager-/Plattform-Admins.
+  const canDeleteShelf = isAdmin || roleForDepot(depotId) === 'ADMIN';
   const [openTarget, setOpenTarget] = useState<LocationTarget | null>(null);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
+  const [openShelf, setOpenShelf] = useState<ShelfView | null>(null);
   const [adding, setAdding] = useState<null | 'shelf' | 'box'>(null);
 
   const { data, isLoading } = useQuery({
@@ -63,6 +66,7 @@ export default function WarehousePage() {
         <Shelf
           key={shelf.id}
           shelf={shelf}
+          onOpenShelf={() => setOpenShelf(shelf)}
           onOpenBox={openBox}
           onOpenCell={(row, col) =>
             setOpenTarget({ kind: 'cell', shelfId: shelf.id, shelfLabel: shelf.label, row, col })
@@ -109,6 +113,19 @@ export default function WarehousePage() {
         />
       )}
 
+      {openShelf && (
+        <ShelfDetailDialog
+          depotId={depotId}
+          shelf={openShelf}
+          canDelete={canDeleteShelf}
+          onClose={() => setOpenShelf(null)}
+          onDeleted={() => {
+            setOpenShelf(null);
+            invalidate();
+          }}
+        />
+      )}
+
       {openTarget && (
         <LocationDrawer
           depotId={depotId}
@@ -132,10 +149,12 @@ export default function WarehousePage() {
 
 function Shelf({
   shelf,
+  onOpenShelf,
   onOpenBox,
   onOpenCell,
 }: {
   shelf: ShelfView;
+  onOpenShelf: () => void;
   onOpenBox: (b: BoxView) => void;
   onOpenCell: (row: number, col: number) => void;
 }) {
@@ -152,15 +171,20 @@ function Shelf({
         className="overflow-hidden rounded-2xl p-2 shadow-lg ring-1 ring-holz-900/40"
         style={woodStyle({ dir: 'v', seed: 3, from: '#b3823f', to: '#6f4520' })}
       >
-        {/* Geschnitztes Namensschild. */}
-        <div className="mb-2 flex items-center justify-between rounded-lg border border-holz-900/40 bg-holz-900/25 px-3 py-1.5">
+        {/* Geschnitztes Namensschild — anklickbar für die Regal-Details. */}
+        <button
+          type="button"
+          onClick={onOpenShelf}
+          title="Regal-Details"
+          className="mb-2 flex w-full items-center justify-between rounded-lg border border-holz-900/40 bg-holz-900/25 px-3 py-1.5 transition hover:bg-holz-900/40 hover:ring-2 hover:ring-lagerfeuer-400"
+        >
           <span className="font-semibold text-holz-50 [text-shadow:0_1px_1px_rgba(0,0,0,.55)]">
             🪵 {shelf.label}
           </span>
           <span className="rounded-full bg-holz-900/40 px-2 py-0.5 text-xs text-holz-100">
             {shelf.gridRows} × {shelf.gridCols} Fächer
           </span>
-        </div>
+        </button>
 
         {/* Innenraum mit liegender Maserung (Fachböden). */}
         <div
@@ -270,6 +294,82 @@ function BoxTile({
         </span>
       </span>
     </button>
+  );
+}
+
+/**
+ * Regal-Detailsicht: zeigt Größe und Belegung. Admins können das Regal löschen —
+ * Inhalte bleiben erhalten (lose Gegenstände → „Nicht einsortiert", Kisten → freistehend).
+ */
+function ShelfDetailDialog({
+  depotId,
+  shelf,
+  canDelete,
+  onClose,
+  onDeleted,
+}: {
+  depotId: string;
+  shelf: ShelfView;
+  canDelete: boolean;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirm, setConfirm] = useState(false);
+  const del = useMutation({
+    mutationFn: () => api.deleteLocation(depotId, shelf.id),
+    onSuccess: onDeleted,
+  });
+
+  const boxCount = shelf.cells.filter((c) => c.box).length;
+  const looseCount = shelf.cells.reduce((n, c) => n + c.looseItems.length, 0);
+
+  const footer = canDelete ? (
+    <div className="flex justify-between gap-2">
+      <Button variant="fire" onClick={() => setConfirm(true)}>
+        🗑️ Regal löschen
+      </Button>
+      <Button variant="ghost" onClick={onClose}>
+        Schließen
+      </Button>
+    </div>
+  ) : (
+    <div className="flex justify-end">
+      <Button variant="ghost" onClick={onClose}>
+        Schließen
+      </Button>
+    </div>
+  );
+
+  return (
+    <Modal title={`🪵 ${shelf.label}`} onClose={onClose} footer={footer}>
+      <div className="space-y-3 text-sm text-moos-700">
+        <p>
+          Größe: {shelf.gridRows} × {shelf.gridCols} Fächer
+        </p>
+        <p>
+          Belegt: {boxCount} {boxCount === 1 ? 'Kiste' : 'Kisten'}, {looseCount} lose{' '}
+          {looseCount === 1 ? 'Gegenstand' : 'Gegenstände'}
+        </p>
+        {canDelete ? (
+          <p className="text-moos-500">
+            Beim Löschen bleiben alle Inhalte erhalten: lose Gegenstände erscheinen unter „Nicht
+            einsortiert", Kisten werden zu freistehenden Kisten.
+          </p>
+        ) : (
+          <p className="text-moos-400">Nur Lager-Admins können Regale löschen.</p>
+        )}
+        {del.isError && <p className="text-red-600">{(del.error as Error).message}</p>}
+      </div>
+
+      {confirm && (
+        <ConfirmDelete
+          message={`„${shelf.label}" löschen? Inhalte bleiben erhalten: lose Gegenstände wandern zu „Nicht einsortiert", Kisten werden freistehend.`}
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => del.mutate()}
+          pending={del.isPending}
+        />
+      )}
+    </Modal>
   );
 }
 

@@ -3,6 +3,7 @@ package de.grauerreiter.jurtenburg;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -100,6 +101,51 @@ class WarehouseApiTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/depots/{d}/inventory", depotId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$..openDefects[*].title", hasItem("Loch")));
+    }
+
+    @Test
+    void deletingShelfKeepsContents() throws Exception {
+        MockMvc mvc = mvc();
+        String depotId = createDepot("Lösch-Lager");
+
+        // Regal 2×2.
+        String shelfBody = mvc.perform(post("/api/depots/{d}/locations", depotId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SHELF\",\"label\":\"Regal A\",\"gridRows\":2,\"gridCols\":2}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String shelfId = json.readTree(shelfBody).get("id").asText();
+
+        // Kiste in Fach (0,0) mit einem Gegenstand.
+        String boxBody = mvc.perform(post("/api/depots/{d}/locations", depotId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"BOX\",\"label\":\"Kiste A\",\"parentLocationId\":\"" + shelfId
+                                + "\",\"row\":0,\"col\":0}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String boxId = json.readTree(boxBody).get("id").asText();
+        mvc.perform(post("/api/depots/{d}/items", depotId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Dach\",\"quantity\":1,\"locationId\":\"" + boxId + "\"}"))
+                .andExpect(status().isCreated());
+
+        // Loser Gegenstand direkt im Fach (1,1).
+        mvc.perform(post("/api/depots/{d}/items", depotId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Hammer\",\"quantity\":1,\"locationId\":\"" + shelfId
+                                + "\",\"row\":1,\"col\":1}"))
+                .andExpect(status().isCreated());
+
+        // Regal löschen.
+        mvc.perform(delete("/api/depots/{d}/locations/{l}", depotId, shelfId))
+                .andExpect(status().isNoContent());
+
+        // Kein Regal mehr, Kiste ist freistehend (behält ihren Inhalt), loser Gegenstand ist unsortiert.
+        mvc.perform(get("/api/depots/{d}/warehouse", depotId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shelves", hasSize(0)))
+                .andExpect(jsonPath("$.freestandingBoxes", hasSize(1)))
+                .andExpect(jsonPath("$.freestandingBoxes[0].itemCount", is(1)))
+                .andExpect(jsonPath("$.unassignedItems", hasSize(1)))
+                .andExpect(jsonPath("$.unassignedItems[0].name", is("Hammer")));
     }
 
     @Test
