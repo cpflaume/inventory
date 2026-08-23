@@ -183,16 +183,29 @@ export interface WarehouseView {
   unassignedItems: Item[];
 }
 
+/** Kompakter offener Mangel für die Druckansichten (Beipackzettel/Bestand). */
+export interface DefectSummary {
+  id: string;
+  itemId?: string | null;
+  title: string;
+  description?: string | null;
+  severity: Severity;
+  reporter?: string | null;
+  createdAt: string;
+}
+
 export interface BoxContentsView {
   locationId: string;
   label: string;
   items: Item[];
+  openDefects: DefectSummary[];
 }
 
 export interface InventoryGroup {
   locationId?: string | null;
   locationLabel: string;
   items: Item[];
+  openDefects: DefectSummary[];
 }
 
 export interface InventoryView {

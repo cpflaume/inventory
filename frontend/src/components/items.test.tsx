@@ -60,6 +60,15 @@ describe('ItemDialog (Gegenstand-Detail)', () => {
     expect(await screen.findByText('Loch in der Plane')).toBeInTheDocument();
   });
 
+  it('öffnet das Mangel-Detail beim Klick auf einen Mangel', async () => {
+    renderDialog(false);
+
+    await userEvent.click(await screen.findByText('Loch in der Plane'));
+    // Der Mangel-Detail-Dialog erscheint (eigene Felder wie „Schwere").
+    expect(await screen.findByText('Schwere')).toBeInTheDocument();
+    expect(screen.getByText('Defekt')).toBeInTheDocument();
+  });
+
   it('blendet Bearbeiten/Löschen ohne Editor-Recht aus', () => {
     renderDialog(false);
     expect(screen.queryByRole('button', { name: /Bearbeiten/ })).not.toBeInTheDocument();

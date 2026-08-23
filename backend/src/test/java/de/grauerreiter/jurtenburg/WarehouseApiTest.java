@@ -1,5 +1,6 @@
 package de.grauerreiter.jurtenburg;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -88,6 +89,17 @@ class WarehouseApiTest extends AbstractIntegrationTest {
                         .content("{\"title\":\"Loch\",\"severity\":\"MACKE\",\"locationId\":\"" + boxId + "\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status", is("OPEN")));
+
+        // Beipackzettel führt den offenen Mangel der Kiste nun mit auf.
+        mvc.perform(get("/api/depots/{d}/locations/{l}/contents", depotId, boxId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openDefects", hasSize(1)))
+                .andExpect(jsonPath("$.openDefects[0].title", is("Loch")));
+
+        // Bestandsliste zeigt den offenen Mangel (bei der Gruppe des betroffenen Orts).
+        mvc.perform(get("/api/depots/{d}/inventory", depotId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$..openDefects[*].title", hasItem("Loch")));
     }
 
     @Test

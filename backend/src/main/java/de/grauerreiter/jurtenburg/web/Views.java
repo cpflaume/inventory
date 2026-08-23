@@ -1,6 +1,9 @@
 package de.grauerreiter.jurtenburg.web;
 
+import de.grauerreiter.jurtenburg.domain.DefectReport;
+import de.grauerreiter.jurtenburg.domain.Severity;
 import de.grauerreiter.jurtenburg.web.Dtos.ItemResponse;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,12 +37,29 @@ public final class Views {
             List<ItemResponse> unassignedItems) {
     }
 
-    /** Druckbarer Beipackzettel: Inhalt einer Kiste (oder eines Fachs). */
-    public record BoxContentsView(UUID locationId, String label, List<ItemResponse> items) {
+    /**
+     * Kompakter offener Mangel für die Druckansichten (Beipackzettel/Bestand):
+     * genug, um am Ort zu erkennen „was ist kaputt", ohne die volle Meldung.
+     */
+    public record DefectSummary(UUID id, UUID itemId, String title, String description,
+            Severity severity, String reporter, Instant createdAt) {
+        public static DefectSummary of(DefectReport d) {
+            return new DefectSummary(d.getId(), d.getItemId(), d.getTitle(), d.getDescription(),
+                    d.getSeverity(), d.getReporter(), d.getCreatedAt());
+        }
     }
 
-    /** Eine Gruppe der Bestandsliste (nach Ort gruppiert). */
-    public record InventoryGroup(UUID locationId, String locationLabel, List<ItemResponse> items) {
+    /**
+     * Druckbarer Beipackzettel: Inhalt einer Kiste (oder eines Fachs) inkl.
+     * offener Mängel an der Kiste oder ihren Gegenständen.
+     */
+    public record BoxContentsView(UUID locationId, String label, List<ItemResponse> items,
+            List<DefectSummary> openDefects) {
+    }
+
+    /** Eine Gruppe der Bestandsliste (nach Ort gruppiert) inkl. offener Mängel. */
+    public record InventoryGroup(UUID locationId, String locationLabel, List<ItemResponse> items,
+            List<DefectSummary> openDefects) {
     }
 
     /** Druckbare Bestandsliste eines Lagers. */
