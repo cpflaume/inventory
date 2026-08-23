@@ -1,4 +1,4 @@
-package de.grauerreiter.jurtenburg;
+package de.grauerreiter.jurtenburg.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,7 +11,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 import de.grauerreiter.jurtenburg.config.FeedbackProperties;
-import de.grauerreiter.jurtenburg.service.FeedbackService;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.BusinessRuleException;
 import de.grauerreiter.jurtenburg.web.FeedbackDtos.ClientInfo;
 import de.grauerreiter.jurtenburg.web.FeedbackDtos.FeedbackRequest;

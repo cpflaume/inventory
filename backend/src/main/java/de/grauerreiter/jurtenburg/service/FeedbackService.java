@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,15 @@ public class FeedbackService {
     private final FeedbackProperties props;
     private final RestClient restClient;
 
-    public FeedbackService(FeedbackProperties props, RestClient.Builder restClientBuilder) {
+    @Autowired
+    public FeedbackService(FeedbackProperties props) {
+        // Eigener RestClient über die statische Factory — bewusst ohne autokonfigurierten
+        // RestClient.Builder-Bean, den diese App (kein weiterer HTTP-Client) sonst nicht bereitstellt.
+        this(props, RestClient.builder());
+    }
+
+    /** Sichtbar für Tests: erlaubt das Einhängen eines gemockten Builders (MockRestServiceServer). */
+    FeedbackService(FeedbackProperties props, RestClient.Builder restClientBuilder) {
         this.props = props;
         this.restClient = restClientBuilder.build();
     }
