@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import Layout from './components/Layout';
+import FeedbackWidget from './components/FeedbackWidget';
 import DepotListPage from './pages/DepotListPage';
 import WarehousePage from './pages/WarehousePage';
 import MaterialPage from './pages/MaterialPage';
@@ -19,8 +20,15 @@ import { RequireAdmin, RequireAuth } from './auth/guards';
 export const router = createBrowserRouter([
   {
     // Pathless Wurzel-Route: fängt abgestürzte Routen zentral über die
-    // freundliche Fehlerseite ab (statt der Whitelabel-Standardseite).
-    element: <Outlet />,
+    // freundliche Fehlerseite ab (statt der Whitelabel-Standardseite). Der
+    // Feedback-Button liegt hier auf oberster Ebene, damit er (für angemeldete
+    // Benutzer) auf jeder Seite erreichbar ist.
+    element: (
+      <>
+        <Outlet />
+        <FeedbackWidget />
+      </>
+    ),
     errorElement: <ErrorPage />,
     children: [
       // Öffentlich

@@ -34,6 +34,12 @@ Monorepo für die Pfadfinder-Lagersoftware. **Scope endet beim Docker-Image**; D
   → neue Mutations-Endpunkte sind ohne Zutun abgedeckt. Login wird explizit im `AuthController`/OIDC-Callback
   erfasst (auch Fehlschläge). Einträge liegen in `audit_log` (denormalisierter `actor_username`, kein FK).
   Ansicht/Filter nur für Admins über `/api/admin/audit-logs` → Frontend `AuditLogPage` (Link auf der Admin-Seite).
+- **Feedback** (`web/FeedbackController`, `service/FeedbackService`, `config/FeedbackProperties`):
+  In-App-Feedback wird als **GitHub-Issue** im Projekt-Repo angelegt (mit Kontext: Seite, Client-/
+  Gerätedetails, Navigationsverlauf). Standard AUS (`app.feedback.enabled`); Button erscheint nur, wenn
+  aktiv **und** Token+Repo gesetzt. Token bleibt serverseitig; Frontend fragt nur `GET /api/feedback/config`.
+  Frontend: `components/FeedbackWidget` (schwebender Button, oberste Router-Ebene), `feedback/`
+  (Kontext-Sammlung). Setup siehe `docs/feedback.md`.
 - **Fehler**: `ApiExceptions.NotFoundException` (404) / `BusinessRuleException` (422).
 - **Bilder/Namen**: keine Modell-Kennung o.ä. in committete Artefakte.
 
@@ -43,6 +49,15 @@ docker compose up --build                        # kompletter lokaler Stack
 cd backend  && ./gradlew test                    # Testcontainers-Postgres (braucht Docker)
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
+
+### Backend-Verifikation ohne JDK 25 (z.B. Web-/CI-Sandbox mit nur JDK 21)
+Ist lokal kein JDK 25 installiert (Gradle-Toolchain schlägt fehl: „Cannot find a Java installation …
+matching languageVersion=25"), lässt sich das Backend trotzdem prüfen, indem die Toolchain
+**vorübergehend** heruntergestuft wird — der Code ist 21-kompatibel:
+1. In `backend/build.gradle` `JavaLanguageVersion.of(25)` → `of(21)` setzen.
+2. Kompilieren + Unit-Tests laufen lassen. Integrationstests brauchen Docker; ohne Docker lassen sich
+   Docker-freie Tests gezielt einzeln auswählen (`--tests …`).
+3. **Downgrade wieder rückgängig machen** (`of(21)` → `of(25)`) — nie mit gestufter Toolchain committen.
 
 ## Tests
 - Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
