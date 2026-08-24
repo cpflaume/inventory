@@ -117,6 +117,14 @@ public final class Dtos {
         }
     }
 
+    /** „Bausatz ins Lager übernehmen": legt alle Positionen als neue Gegenstände in einer neuen Kiste an. */
+    public record KitInstantiateRequest(@NotBlank String boxLabel) {
+    }
+
+    /** Ergebnis der Übernahme: die neue Kiste und wie viele Gegenstände darin angelegt wurden. */
+    public record KitInstantiationResponse(UUID boxId, String boxLabel, int itemCount) {
+    }
+
     // ---- Mängelmeldung ----
 
     public record DefectReportRequest(

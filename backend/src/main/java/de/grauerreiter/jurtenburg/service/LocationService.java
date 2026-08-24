@@ -14,11 +14,13 @@ import de.grauerreiter.jurtenburg.web.Dtos.LocationRequest;
 import de.grauerreiter.jurtenburg.web.Views.BoxContentsView;
 import de.grauerreiter.jurtenburg.web.Views.BoxView;
 import de.grauerreiter.jurtenburg.web.Views.CellView;
+import de.grauerreiter.jurtenburg.web.Views.DefectSummary;
 import de.grauerreiter.jurtenburg.web.Views.ShelfView;
 import de.grauerreiter.jurtenburg.web.Views.WarehouseView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -244,9 +246,18 @@ public class LocationService {
     @Transactional(readOnly = true)
     public BoxContentsView contents(UUID depotId, UUID locationId) {
         Location location = getInDepot(depotId, locationId);
-        List<ItemResponse> contents = items.findByLocationId(locationId).stream()
+        List<Item> boxItems = items.findByLocationId(locationId);
+        List<ItemResponse> contents = boxItems.stream()
                 .map(ItemResponse::of)
                 .toList();
-        return new BoxContentsView(location.getId(), location.getLabel(), contents);
+        Set<UUID> itemIds = boxItems.stream().map(Item::getId).collect(Collectors.toSet());
+        // Offene Mängel: an der Kiste selbst ODER an einem ihrer Gegenstände.
+        List<DefectSummary> openDefects = defects.findByDepotIdOrderByCreatedAtDesc(depotId).stream()
+                .filter(d -> d.getStatus() == DefectStatus.OPEN)
+                .filter(d -> locationId.equals(d.getLocationId())
+                        || (d.getItemId() != null && itemIds.contains(d.getItemId())))
+                .map(DefectSummary::of)
+                .toList();
+        return new BoxContentsView(location.getId(), location.getLabel(), contents, openDefects);
     }
 }

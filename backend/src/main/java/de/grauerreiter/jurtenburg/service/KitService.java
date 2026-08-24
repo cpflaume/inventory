@@ -1,12 +1,19 @@
 package de.grauerreiter.jurtenburg.service;
 
+import de.grauerreiter.jurtenburg.domain.ConditionFlag;
 import de.grauerreiter.jurtenburg.domain.Kit;
 import de.grauerreiter.jurtenburg.domain.KitPosition;
+import de.grauerreiter.jurtenburg.domain.Location;
+import de.grauerreiter.jurtenburg.domain.LocationType;
 import de.grauerreiter.jurtenburg.repo.KitRepository;
 import de.grauerreiter.jurtenburg.web.ApiExceptions.NotFoundException;
+import de.grauerreiter.jurtenburg.web.Dtos.ItemRequest;
+import de.grauerreiter.jurtenburg.web.Dtos.KitInstantiateRequest;
+import de.grauerreiter.jurtenburg.web.Dtos.KitInstantiationResponse;
 import de.grauerreiter.jurtenburg.web.Dtos.KitPositionRequest;
 import de.grauerreiter.jurtenburg.web.Dtos.KitRequest;
 import de.grauerreiter.jurtenburg.web.Dtos.KitResponse;
+import de.grauerreiter.jurtenburg.web.Dtos.LocationRequest;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -25,10 +32,12 @@ public class KitService {
 
     private final KitRepository kits;
     private final ItemService itemService;
+    private final LocationService locationService;
 
-    public KitService(KitRepository kits, ItemService itemService) {
+    public KitService(KitRepository kits, ItemService itemService, LocationService locationService) {
         this.kits = kits;
         this.itemService = itemService;
+        this.locationService = locationService;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +70,26 @@ public class KitService {
     @Transactional
     public void delete(UUID depotId, UUID kitId) {
         kits.delete(getEntityInDepot(depotId, kitId));
+    }
+
+    /**
+     * Übernimmt einen Bausatz ins Lager: legt eine neue (freistehende) Kiste an und
+     * darin für jede Position einen neuen Gegenstand (Name = Positions-Bezeichnung,
+     * Menge = Soll-Menge). Bestehende Gegenstände bleiben unberührt.
+     */
+    @Transactional
+    public KitInstantiationResponse instantiate(UUID depotId, UUID kitId, KitInstantiateRequest req) {
+        Kit kit = getEntityInDepot(depotId, kitId);
+        Location box = locationService.create(depotId,
+                new LocationRequest(LocationType.BOX, req.boxLabel(), null, null, null, null, null));
+        int count = 0;
+        for (KitPosition p : kit.getPositions()) {
+            itemService.create(depotId, new ItemRequest(
+                    p.getLabel(), null, p.getTargetQuantity(), null, box.getId(),
+                    null, null, ConditionFlag.GREEN, null));
+            count++;
+        }
+        return new KitInstantiationResponse(box.getId(), box.getLabel(), count);
     }
 
     private Kit getEntityInDepot(UUID depotId, UUID kitId) {

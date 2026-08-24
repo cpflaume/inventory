@@ -61,12 +61,13 @@ matching languageVersion=25"), lässt sich das Backend trotzdem prüfen, indem d
 
 ## Tests
 - Backend: `WarehouseApiTest` (End-to-end REST inkl. Fach-XOR + Mandantentrennung, Testcontainers),
-  `KitApiTest` (Bausatz anlegen+listen), `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff),
+  `KitApiTest` (Bausatz anlegen+listen; „ins Lager übernehmen" → neue Kiste mit Gegenständen),
+  `AuthApiTest` (Registrierung→Freigabe→JWT→Gruppen-Zugriff),
   `AuditApiTest` (Login + verändernde Operationen werden protokolliert, Admin-only-Filteransicht).
   Integrationstests laufen als Plattform-Admin (`adminMockMvc`); `AuthApiTest` nutzt echte Tokens.
 - Frontend Unit: `WarehousePage.test.tsx` (virtuelles Lager rendert Regal/Kiste/freistehend).
 - Frontend E2E (`frontend/e2e/`, Playwright): ein Spec je Haupt-Use-Case (Auth/Login+Registrierung,
-  Lager, virtuelles Lager, Material, Mängelmeldung, Drucken), **gegen das echte Backend** mit
+  Lager, virtuelles Lager, Material, Mängelmeldung, Drucken, Bausatz-Übernahme), **gegen das echte Backend** mit
   Seed-Testdaten (`APP_SEED_DEMO=true`, siehe `config/DemoDataSeeder`). Ein `globalSetup` meldet sich
   einmal als Admin an (storageState); der Auth-Spec nutzt leeren storageState. Der Playwright-`webServer` startet nur das
   Frontend (Vite, Port 5174, proxied `/api` → Backend `:8080`); das Backend muss laufen
