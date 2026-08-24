@@ -48,10 +48,90 @@ export interface AuthResponse {
   user: UserSummary;
 }
 
+/** Öffentlicher OIDC-Status: ob SSO aktiv ist und wohin der Login-Start zeigt. */
+export interface OidcConfig {
+  enabled: boolean;
+  loginUrl: string;
+}
+
+// ---- Feedback ----
+
+/** Ob der In-App-Feedback-Button angezeigt werden soll. */
+export interface FeedbackConfig {
+  enabled: boolean;
+}
+
+/** Client-/Gerätedetails, die dem Feedback als Kontext beigelegt werden. */
+export interface FeedbackClientInfo {
+  userAgent?: string;
+  language?: string;
+  platform?: string;
+  deviceType?: string;
+  viewport?: string;
+  screen?: string;
+  timezone?: string;
+}
+
+/** Ein Eintrag im Navigationsverlauf (Pfad + Zeitpunkt als ISO-String). */
+export interface FeedbackNavEntry {
+  path: string;
+  at: string;
+}
+
+/** Feedback samt Kontext, wie es ans Backend geht. */
+export interface FeedbackRequest {
+  message: string;
+  path?: string;
+  url?: string;
+  client?: FeedbackClientInfo;
+  history?: FeedbackNavEntry[];
+}
+
+/** Antwort nach erfolgreichem Anlegen: Nummer und Link des GitHub-Issues. */
+export interface FeedbackResponse {
+  issueNumber: number;
+  issueUrl: string;
+}
+
 export interface GroupDepotMapping {
   depotId: string;
   depotName: string;
   role: DepotRole;
+}
+
+// ---- Audit-Log ----
+
+export type AuditAction = 'LOGIN' | 'LOGIN_FAILED' | 'CREATE' | 'UPDATE' | 'DELETE';
+
+export interface AuditLogView {
+  id: string;
+  occurredAt: string;
+  action: AuditAction;
+  method?: string | null;
+  path?: string | null;
+  statusCode?: number | null;
+  actorUserId?: string | null;
+  actorUsername?: string | null;
+  depotId?: string | null;
+  ipAddress?: string | null;
+}
+
+export interface AuditPage {
+  content: AuditLogView[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface AuditQuery {
+  action?: AuditAction | '';
+  actor?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
 }
 
 export interface Depot {
@@ -99,6 +179,13 @@ export interface Kit {
   positions: KitPosition[];
 }
 
+/** Ergebnis der „Bausatz ins Lager übernehmen"-Aktion. */
+export interface KitInstantiationResult {
+  boxId: string;
+  boxLabel: string;
+  itemCount: number;
+}
+
 export interface DefectReport {
   id: string;
   itemId?: string | null;
@@ -142,16 +229,29 @@ export interface WarehouseView {
   unassignedItems: Item[];
 }
 
+/** Kompakter offener Mangel für die Druckansichten (Beipackzettel/Bestand). */
+export interface DefectSummary {
+  id: string;
+  itemId?: string | null;
+  title: string;
+  description?: string | null;
+  severity: Severity;
+  reporter?: string | null;
+  createdAt: string;
+}
+
 export interface BoxContentsView {
   locationId: string;
   label: string;
   items: Item[];
+  openDefects: DefectSummary[];
 }
 
 export interface InventoryGroup {
   locationId?: string | null;
   locationLabel: string;
   items: Item[];
+  openDefects: DefectSummary[];
 }
 
 export interface InventoryView {

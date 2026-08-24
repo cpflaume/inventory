@@ -183,7 +183,7 @@ function DefectRow({
         onResolve && (
           <div className="shrink-0">
             <Button variant="ghost" onClick={onResolve} disabled={resolving}>
-              Erledigt
+              erledigen
             </Button>
           </div>
         )

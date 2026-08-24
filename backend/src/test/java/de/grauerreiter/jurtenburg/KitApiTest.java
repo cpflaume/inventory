@@ -62,4 +62,42 @@ class KitApiTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].positions[0].label", is("Jurtendach")))
                 .andExpect(jsonPath("$[0].positions[1].targetQuantity", is(40)));
     }
+
+    @Test
+    void instantiateKitCreatesBoxWithItems() throws Exception {
+        MockMvc mvc = mvc();
+        String depotId = createDepot("Übernahme-Lager");
+
+        String kitJson = """
+                {"name":"Bausatz Kothe","description":"Schwarzzelt",
+                 "positions":[{"label":"Kothenbahnen","targetQuantity":4},
+                              {"label":"Heringe","targetQuantity":20}]}
+                """;
+        String kitBody = mvc.perform(post("/api/depots/{d}/kits", depotId)
+                        .contentType(MediaType.APPLICATION_JSON).content(kitJson))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String kitId = json.readTree(kitBody).get("id").asText();
+
+        // Bausatz ins Lager übernehmen → neue Kiste mit 2 Gegenständen.
+        String result = mvc.perform(post("/api/depots/{d}/kits/{k}/instantiate", depotId, kitId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"boxLabel\":\"Kothe – Neu\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.boxLabel", is("Kothe – Neu")))
+                .andExpect(jsonPath("$.itemCount", is(2)))
+                .andReturn().getResponse().getContentAsString();
+        String boxId = json.readTree(result).get("boxId").asText();
+
+        // Die neue Kiste steht als freistehende Kiste im virtuellen Lager …
+        mvc.perform(get("/api/depots/{d}/warehouse", depotId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.freestandingBoxes", hasSize(1)))
+                .andExpect(jsonPath("$.freestandingBoxes[0].itemCount", is(2)));
+
+        // … und ihr Beipackzettel führt die frisch angelegten Gegenstände mit Soll-Menge.
+        mvc.perform(get("/api/depots/{d}/locations/{l}/contents", depotId, boxId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)));
+    }
 }

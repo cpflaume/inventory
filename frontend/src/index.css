@@ -12,6 +12,30 @@ body {
   background-size: 22px 22px;
 }
 
+/* Danke-Animation nach dem Absenden von Feedback (kurzer Pop). */
+@keyframes feedback-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-feedback-pop {
+  animation: feedback-pop 0.45s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-feedback-pop {
+    animation: none;
+  }
+}
+
 /* Druckansichten: nur der markierte Bereich, schwarz-weiß-tauglich. */
 @media print {
   body {

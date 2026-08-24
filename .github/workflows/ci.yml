@@ -1,10 +1,21 @@
 name: CI
 
 # Qualitäts-Gate auf jedem PR / Push: Backend, Frontend, E2E getrennt.
+# paths-ignore: reine Doku-Änderungen lösen kein (teures) CI aus.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   workflow_dispatch:
     inputs:
       record_all_videos:
@@ -12,9 +23,40 @@ on:
         type: boolean
         default: false
 
+# Neuere Pushes auf denselben Branch lösen den vorherigen Lauf ab (spart
+# Minuten). Auf main läuft jeder Commit voll durch (cancel nur bei PRs).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Nur die Jobs laufen lassen, die die Änderung wirklich betrifft: eine reine
+  # Frontend-Änderung braucht keinen Gradle-Backend-Lauf und umgekehrt. E2E ist
+  # ein Full-Stack-Test und läuft, sobald Backend ODER Frontend betroffen sind.
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
   backend:
     name: Backend (Gradle)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Echte Postgres als Service-Container (robuster als Testcontainers auf dem Runner).
     services:
@@ -57,8 +99,19 @@ jobs:
       - name: Build bootJar
         run: ./gradlew --no-daemon bootJar
 
+      # Reused by the e2e job so it doesn't build the jar a second time.
+      - name: Upload backend jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-jar-${{ github.sha }}
+          path: backend/build/libs/*.jar
+          retention-days: 1
+          if-no-files-found: error
+
   frontend:
     name: Frontend (Vite/React)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -90,6 +143,16 @@ jobs:
 
   e2e:
     name: E2E (Playwright, echtes Backend)
+    # Full-Stack-Test: läuft, sobald Backend ODER Frontend betroffen sind.
+    # Reuse the jar from the backend job when it ran; build it here only if the
+    # backend job was skipped (frontend-only change). Skip if backend failed.
+    needs: [changes, backend]
+    if: >-
+      !cancelled()
+      && needs.backend.result != 'failure'
+      && (needs.changes.outputs.backend == 'true'
+          || needs.changes.outputs.frontend == 'true'
+          || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -116,7 +179,17 @@ jobs:
           cache: gradle
           cache-dependency-path: backend/*.gradle
 
+      # Backend job ran (backend change) → reuse its jar.
+      - name: Download backend jar
+        if: needs.backend.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: backend-jar-${{ github.sha }}
+          path: backend/build/libs
+
+      # Backend job was skipped (frontend-only change) → build the jar here.
       - name: Build backend jar
+        if: needs.backend.result == 'skipped'
         working-directory: backend
         run: ./gradlew --no-daemon bootJar
 
@@ -148,9 +221,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install Playwright Chromium (+ deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: frontend
+        run: npx playwright install-deps chromium
 
       - name: Run E2E
         working-directory: frontend

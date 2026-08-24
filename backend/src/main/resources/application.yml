@@ -49,3 +49,34 @@ app:
     # Der Benutzername ist zugleich die Login-E-Mail.
     username: ${APP_ADMIN_USERNAME:admin@jurtenburg.local}
     password: ${APP_ADMIN_PASSWORD:admin12345}
+  oidc:
+    # Single-Sign-On (z.B. Nextcloud). Standard: AUS — die App läuft dann rein lokal.
+    # Zum Aktivieren OIDC_ENABLED=true und die vier Pflichtwerte unten setzen.
+    enabled: ${OIDC_ENABLED:false}
+    # Basis-URL des IdP (ohne /.well-known/...); zugleich erwarteter iss-Claim.
+    issuer-uri: ${OIDC_ISSUER_URI:}
+    client-id: ${OIDC_CLIENT_ID:}
+    # Vom IdP vergeben; in Produktion als Secret injizieren (nie ins Repo).
+    client-secret: ${OIDC_CLIENT_SECRET:}
+    # Muss beim IdP als Redirect-URI hinterlegt sein (öffentliche Callback-URL dieser App).
+    redirect-uri: ${OIDC_REDIRECT_URI:}
+    scopes: ${OIDC_SCOPES:openid profile email groups}
+    # Client-Authentisierung am Token-Endpunkt: client_secret_basic (Default), client_secret_post
+    # oder none (öffentlicher Client, nur PKCE). Nur ändern, wenn der IdP eine andere Methode verlangt.
+    client-auth-method: ${OIDC_CLIENT_AUTH_METHOD:client_secret_basic}
+    groups-claim: ${OIDC_GROUPS_CLAIM:groups}
+    auto-create-groups: ${OIDC_AUTO_CREATE_GROUPS:true}
+    # Ziel im Frontend nach Login (Token/Fehler im URL-Fragment). Leer = aus redirect-uri abgeleitet.
+    post-login-redirect-uri: ${OIDC_POST_LOGIN_REDIRECT_URI:}
+  feedback:
+    # In-App-Feedback als GitHub-Issue. Standard: AUS — der Button erscheint nur, wenn aktiviert
+    # UND Token + Repo gesetzt sind. Der Token bleibt serverseitig (privates Repo).
+    enabled: ${FEEDBACK_ENABLED:false}
+    # GitHub-Token mit issues:write auf das Repo (Fine-grained empfohlen); in Produktion als Secret injizieren.
+    token: ${FEEDBACK_GITHUB_TOKEN:}
+    # Ziel-Repository als owner/repo.
+    repository: ${FEEDBACK_GITHUB_REPO:}
+    # GitHub-REST-API-Basis (für GitHub Enterprise anpassbar).
+    api-base-url: ${FEEDBACK_GITHUB_API_BASE_URL:https://api.github.com}
+    # Labels für jedes Feedback-Issue (kommagetrennt).
+    labels: ${FEEDBACK_LABELS:feedback}

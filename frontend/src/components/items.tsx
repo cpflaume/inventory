@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ItemInput } from '../api/client';
 import type { ConditionFlag, DefectReport, Item, Location } from '../api/types';
 import { Button, Card, ConditionDot, Modal, inputClass } from './ui';
+import { DefectDetailDialog } from './DefectDetail';
+import { ItemIcon } from './ItemIcon';
 import { type LocationTarget, targetLabel, targetPatch } from './locationTarget';
 import { collectCategories, emptyItem, itemToInput, normalizeItem } from './itemModel';
 
@@ -44,13 +46,17 @@ export function ItemForm({
 
   return (
     <div className="space-y-3">
-      <input
-        autoFocus
-        value={value.name}
-        onChange={(e) => onChange({ ...value, name: e.target.value })}
-        placeholder="Was? (z.B. Hammer, Jurtendach)"
-        className={inputClass}
-      />
+      {/* Live-Vorschau des automatisch erkannten Icons beim Tippen des Namens. */}
+      <div className="flex items-center gap-3">
+        <ItemIcon name={value.name} size="md" />
+        <input
+          autoFocus
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          placeholder="Was? (z.B. Hammer, Jurtendach)"
+          className={`${inputClass} min-w-0 flex-1`}
+        />
+      </div>
       <div className="flex flex-wrap gap-2">
         <input
           value={value.category ?? ''}
@@ -144,7 +150,13 @@ export function ItemRow({ item, onClick }: { item: Item; onClick?: () => void })
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-moos-50"
     >
-      <ConditionDot flag={item.conditionFlag} />
+      <span className="relative shrink-0">
+        <ItemIcon name={item.name} size="sm" />
+        {/* Zustands-Ampel als kleiner Punkt an der Icon-Ecke. */}
+        <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-white p-px">
+          <ConditionDot flag={item.conditionFlag} />
+        </span>
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-moos-800">{item.name}</span>
         {meta && <span className="block truncate text-xs text-moos-500">{meta}</span>}
@@ -156,8 +168,8 @@ export function ItemRow({ item, onClick }: { item: Item; onClick?: () => void })
 
 const SEVERITY_ICON = { MACKE: '🩹', DEFEKT: '💥' } as const;
 
-/** Kompakte Mängel-Liste eines Gegenstands (nur lesend) für die Detailsicht. */
-function ItemDefects({ defects }: { defects: DefectReport[] }) {
+/** Kompakte Mängel-Liste eines Gegenstands für die Detailsicht — jeder Eintrag öffnet das Mangel-Detail. */
+function ItemDefects({ defects, onSelect }: { defects: DefectReport[]; onSelect: (d: DefectReport) => void }) {
   if (defects.length === 0) return null;
   return (
     <div className="space-y-1">
@@ -165,7 +177,12 @@ function ItemDefects({ defects }: { defects: DefectReport[] }) {
         Mängel ({defects.length})
       </p>
       {defects.map((d) => (
-        <div key={d.id} className="flex items-center gap-2 rounded-lg bg-moos-50 px-3 py-2 text-sm">
+        <button
+          key={d.id}
+          type="button"
+          onClick={() => onSelect(d)}
+          className="flex w-full items-center gap-2 rounded-lg bg-moos-50 px-3 py-2 text-left text-sm transition hover:bg-moos-100"
+        >
           <span>{SEVERITY_ICON[d.severity]}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-moos-800">{d.title}</span>
@@ -174,7 +191,7 @@ function ItemDefects({ defects }: { defects: DefectReport[] }) {
           <span className={`text-xs ${d.status === 'OPEN' ? 'text-lagerfeuer-600' : 'text-moos-400'}`}>
             {d.status === 'OPEN' ? 'offen' : 'erledigt'}
           </span>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -213,6 +230,7 @@ export function ItemDialog({
   const isNew = !item;
   const [editing, setEditing] = useState(isNew);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [detailDefect, setDetailDefect] = useState<DefectReport | null>(null);
   const [form, setForm] = useState<ItemInput>(() => {
     if (item) return itemToInput(item);
     return fixedTarget ? { ...emptyItem, ...targetPatch(fixedTarget) } : emptyItem;
@@ -310,18 +328,32 @@ export function ItemDialog({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <ConditionDot flag={item!.conditionFlag} />
-            <span className="text-lg font-semibold text-moos-800">{item!.name}</span>
-            <span className="ml-auto text-moos-400">×{item!.quantity}</span>
+          <div className="flex items-center gap-3">
+            <ItemIcon name={item!.name} size="lg" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <ConditionDot flag={item!.conditionFlag} />
+                <span className="truncate text-lg font-semibold text-moos-800">{item!.name}</span>
+              </span>
+            </span>
+            <span className="text-moos-400">×{item!.quantity}</span>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {item!.category && <LabeledValue label="Kategorie">{item!.category}</LabeledValue>}
             <LabeledValue label="Lagerort">{locationLabel}</LabeledValue>
           </div>
           {item!.note && <LabeledValue label="Notiz">{item!.note}</LabeledValue>}
-          <ItemDefects defects={itemDefects} />
+          <ItemDefects defects={itemDefects} onSelect={setDetailDefect} />
         </div>
+      )}
+
+      {detailDefect && (
+        <DefectDetailDialog
+          depotId={depotId}
+          defect={detailDefect}
+          canEdit={canEdit}
+          onClose={() => setDetailDefect(null)}
+        />
       )}
 
       {confirmDelete && (

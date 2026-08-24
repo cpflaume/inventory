@@ -1,18 +1,25 @@
 // Schlanker, typsicherer API-Client (fetch). Basis-URL ist relativ (/api),
 // im Dev über den Vite-Proxy, in Produktion über Caddy an denselben Host.
 import type {
+  AuditPage,
+  AuditQuery,
   AuthResponse,
   BoxContentsView,
   DefectReport,
   Depot,
   DepotRole,
+  FeedbackConfig,
+  FeedbackRequest,
+  FeedbackResponse,
   GroupDepotMapping,
   GroupSummary,
   InventoryView,
   Item,
   Kit,
+  KitInstantiationResult,
   Location,
   MeResponse,
+  OidcConfig,
   Severity,
   SystemRole,
   UserStatus,
@@ -104,6 +111,12 @@ export const api = {
   login: (body: { email: string; password: string }) =>
     http<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => http<MeResponse>('/auth/me'),
+  oidcConfig: () => http<OidcConfig>('/auth/oidc/config'),
+
+  // ---- Feedback ----
+  feedbackConfig: () => http<FeedbackConfig>('/feedback/config'),
+  sendFeedback: (body: FeedbackRequest) =>
+    http<FeedbackResponse>('/feedback', { method: 'POST', body: JSON.stringify(body) }),
 
   // ---- Admin ----
   adminUsers: () => http<UserSummary[]>('/admin/users'),
@@ -129,6 +142,20 @@ export const api = {
   unmapGroupDepot: (id: string, depotId: string) =>
     http<void>(`/admin/groups/${id}/depots/${depotId}`, { method: 'DELETE' }),
 
+  // ---- Audit-Log (nur Admin) ----
+  auditLogs: (query: AuditQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.action) params.set('action', query.action);
+    if (query.actor?.trim()) params.set('actor', query.actor.trim());
+    if (query.q?.trim()) params.set('q', query.q.trim());
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.page != null) params.set('page', String(query.page));
+    if (query.size != null) params.set('size', String(query.size));
+    const qs = params.toString();
+    return http<AuditPage>(`/admin/audit-logs${qs ? `?${qs}` : ''}`);
+  },
+
   // ---- Fachdaten ----
   listDepots: () => http<Depot[]>('/depots'),
   getDepot: (d: string) => http<Depot>(`/depots/${d}`),
@@ -141,6 +168,8 @@ export const api = {
   listLocations: (d: string) => http<Location[]>(`/depots/${d}/locations`),
   createLocation: (d: string, body: LocationInput) =>
     http<Location>(`/depots/${d}/locations`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteLocation: (d: string, l: string) =>
+    http<void>(`/depots/${d}/locations/${l}`, { method: 'DELETE' }),
   boxContents: (d: string, l: string) => http<BoxContentsView>(`/depots/${d}/locations/${l}/contents`),
 
   listItems: (d: string) => http<Item[]>(`/depots/${d}/items`),
@@ -153,6 +182,11 @@ export const api = {
 
   listKits: (d: string) => http<Kit[]>(`/depots/${d}/kits`),
   getKit: (d: string, k: string) => http<Kit>(`/depots/${d}/kits/${k}`),
+  instantiateKit: (d: string, k: string, boxLabel: string) =>
+    http<KitInstantiationResult>(`/depots/${d}/kits/${k}/instantiate`, {
+      method: 'POST',
+      body: JSON.stringify({ boxLabel }),
+    }),
 
   inventory: (d: string) => http<InventoryView>(`/depots/${d}/inventory`),
 

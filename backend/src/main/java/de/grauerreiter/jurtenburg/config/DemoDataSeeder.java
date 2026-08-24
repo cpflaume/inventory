@@ -104,6 +104,16 @@ public class DemoDataSeeder {
             kit.addPosition(new KitPosition("Gestänge", 1, null));
             kits.save(kit);
 
+            // Zweiter Bausatz: Kothe (Schwarzzelt) — Positionen ohne Item-Verweis,
+            // damit sich der Bausatz per „Ins Lager übernehmen" frisch anlegen lässt.
+            Kit kothe = new Kit(depotId, "Bausatz Kothe", "Schwarzzelt (Kothe), ausgepackt aufbaubar.");
+            kothe.addPosition(new KitPosition("Kothenbahnen", 4, null));
+            kothe.addPosition(new KitPosition("Kothenkreuz", 1, null));
+            kothe.addPosition(new KitPosition("Mittelstange", 1, null));
+            kothe.addPosition(new KitPosition("Heringe", 20, null));
+            kothe.addPosition(new KitPosition("Abspannleinen", 8, null));
+            kits.save(kothe);
+
             // Eine offene Mängelmeldung.
             DefectReport defect = new DefectReport(depotId, "Loch in Seitenplane", Severity.MACKE);
             defect.setItemId(planen.getId());

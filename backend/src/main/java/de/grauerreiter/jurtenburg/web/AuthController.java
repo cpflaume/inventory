@@ -7,6 +7,7 @@ import de.grauerreiter.jurtenburg.repo.DepotRepository;
 import de.grauerreiter.jurtenburg.security.AccessService;
 import de.grauerreiter.jurtenburg.security.AppUserDetails;
 import de.grauerreiter.jurtenburg.security.JwtService;
+import de.grauerreiter.jurtenburg.service.AuditService;
 import de.grauerreiter.jurtenburg.service.AuthService;
 import de.grauerreiter.jurtenburg.web.AuthDtos.AuthResponse;
 import de.grauerreiter.jurtenburg.web.AuthDtos.DepotAccess;
@@ -14,6 +15,7 @@ import de.grauerreiter.jurtenburg.web.AuthDtos.LoginRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.MeResponse;
 import de.grauerreiter.jurtenburg.web.AuthDtos.RegisterRequest;
 import de.grauerreiter.jurtenburg.web.AuthDtos.UserSummary;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -33,13 +35,15 @@ public class AuthController {
     private final JwtService jwtService;
     private final AccessService accessService;
     private final DepotRepository depots;
+    private final AuditService audit;
 
     public AuthController(AuthService authService, JwtService jwtService, AccessService accessService,
-            DepotRepository depots) {
+            DepotRepository depots, AuditService audit) {
         this.authService = authService;
         this.jwtService = jwtService;
         this.accessService = accessService;
         this.depots = depots;
+        this.audit = audit;
     }
 
     /** Registrierung (lokal). Konto ist danach PENDING und muss freigegeben werden. */
@@ -50,10 +54,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
-        String token = authService.login(req.email(), req.password());
-        AppUser user = authService.byId(jwtService.userId(jwtService.parse(token)));
-        return new AuthResponse(token, UserSummary.of(user));
+    public AuthResponse login(@Valid @RequestBody LoginRequest req, HttpServletRequest request) {
+        String ip = AuditService.clientIp(request);
+        try {
+            String token = authService.login(req.email(), req.password());
+            AppUser user = authService.byId(jwtService.userId(jwtService.parse(token)));
+            audit.recordLogin(user.getUsername(), user.getId(), true, ip);
+            return new AuthResponse(token, UserSummary.of(user));
+        } catch (RuntimeException ex) {
+            audit.recordLogin(req.email(), null, false, ip);
+            throw ex;
+        }
     }
 
     /** Aktueller Benutzer inkl. der Lager, die er erreichen darf (mit Rolle). */
