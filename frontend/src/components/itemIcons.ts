@@ -1,7 +1,9 @@
 // Automatische Gegenstands-Grafiken: ordnet jedem Gegenstand anhand seines
-// Namens ein passendes Icon zu. Die Icons kommen als Inline-SVG aus
-// `lucide-react` (tree-shakeable, keine Bildassets — passt zur Lager-Philosophie,
-// siehe warehouseArt.tsx/CLAUDE.md).
+// Namens ein passendes Icon zu. Die Icons stammen aus dem hauseigenen
+// Pfadfinder- & Zelten-Set (`icons/motifs.tsx`) – Inline-SVG in zwei Varianten
+// (outline für große Ansichten & das Regal, filled für sehr kleine Listen),
+// keine Bildassets, tree-shakeable (passt zur Lager-Philosophie, siehe
+// warehouseArt.tsx/CLAUDE.md).
 //
 // Matching-Strategie (bewusst ohne schweres ML-Embedding, das ein MB-großes
 // Modell in den Browser laden würde):
@@ -13,295 +15,161 @@
 // Reicht nichts, greift ein generisches Fallback-Icon.
 
 import Fuse from 'fuse.js';
-import {
-  Anchor,
-  Apple,
-  Award,
-  Backpack,
-  Bandage,
-  BatteryCharging,
-  Bed,
-  BedDouble,
-  Bell,
-  Binoculars,
-  Bird,
-  Book,
-  BookOpen,
-  Brush,
-  Bug,
-  Camera,
-  Caravan,
-  Carrot,
-  Clipboard,
-  ClipboardList,
-  Cloud,
-  CloudRain,
-  Clover,
-  Coffee,
-  Compass,
-  CookingPot,
-  Cross,
-  CupSoda,
-  Dices,
-  Dog,
-  Droplet,
-  Droplets,
-  Drum,
-  Drumstick,
-  Egg,
-  Feather,
-  Fence,
-  FireExtinguisher,
-  Fish,
-  Flag,
-  Flame,
-  FlameKindling,
-  Flashlight,
-  Flower,
-  Footprints,
-  Fuel,
-  Gamepad,
-  Glasses,
-  Guitar,
-  Ham,
-  Hammer,
-  HardHat,
-  Key,
-  Lamp,
-  Layers,
-  Leaf,
-  LifeBuoy,
-  Lock,
-  Map as MapIcon,
-  MapPin,
-  Medal,
-  Megaphone,
-  Milk,
-  Moon,
-  Mountain,
-  Navigation,
-  Notebook,
-  Nut,
-  Package,
-  Pencil,
-  Phone,
-  Pickaxe,
-  Pill,
-  Pin,
-  Radio,
-  Route,
-  Ruler,
-  Sailboat,
-  Salad,
-  Sandwich,
-  Satellite,
-  Scissors,
-  Scroll,
-  Shield,
-  Shirt,
-  ShowerHead,
-  Shovel,
-  Signpost,
-  Snowflake,
-  Soup,
-  Sprout,
-  Stethoscope,
-  Sun,
-  Telescope,
-  Tent,
-  TentTree,
-  Thermometer,
-  Ticket,
-  Toilet,
-  Trash2,
-  TreePine,
-  Trees,
-  Trophy,
-  Umbrella,
-  Utensils,
-  UtensilsCrossed,
-  Watch,
-  Waves,
-  Wheat,
-  Wind,
-  Wrench,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
+import type { IconComponent, IconMotif } from './icons/base';
+import { MOTIFS } from './icons/motifs';
+
+export type IconVariant = 'outline' | 'filled';
 
 export interface IconEntry {
   /** Stabile ID (für Tests/Debugging). */
   id: string;
   /** Deutsches Anzeige-Label des Motivs. */
   label: string;
-  Icon: LucideIcon;
+  /** Motiv mit outline- und filled-Variante. */
+  motif: IconMotif;
   /** Deutsche Such-/Synonymbegriffe (Wortstämme bevorzugt für Komposita). */
   keywords: string[];
 }
 
-/** Generisches Icon, wenn nichts Passendes gefunden wird. */
-export const FALLBACK_ICON: LucideIcon = Package;
+/** Generisches Motiv, wenn nichts Passendes gefunden wird. */
+export const FALLBACK_MOTIF: IconMotif = MOTIFS.paket;
+/** Rückwärtskompatibel: outline-Fallback-Komponente. */
+export const FALLBACK_ICON: IconComponent = FALLBACK_MOTIF.outline;
 
 // Die Datenbank: >100 Motive rund um Pfadfinder & Zelten. Bewusst Wortstämme
 // als Keywords (jurte statt jurtendach), damit Komposita per Teilwort greifen.
 export const ICON_CATALOG: IconEntry[] = [
-  // --- Zelt & Unterkunft ---
-  { id: 'zelt', label: 'Zelt', Icon: Tent, keywords: ['zelt', 'hauszelt', 'kuppelzelt', 'igluzelt', 'steilwandzelt', 'wurfzelt', 'gruppenzelt', 'mannschaftszelt', 'zeltstange', 'gestange', 'zeltgestange'] },
-  { id: 'jurte', label: 'Jurte / Kohte', Icon: TentTree, keywords: ['jurte', 'kohte', 'kote', 'tipi', 'tepee', 'schwarzzelt', 'jurtendach', 'kohtenbahn', 'jurtenwand', 'wolldecke jurte'] },
-  { id: 'plane', label: 'Plane / Tarp', Icon: Layers, keywords: ['plane', 'zeltplane', 'abdeckplane', 'tarp', 'persenning', 'bodenplane', 'zeltboden', 'unterlegplane', 'regenplane'] },
-  { id: 'hering', label: 'Hering / Zeltnagel', Icon: Pin, keywords: ['hering', 'heringe', 'zeltnagel', 'zeltnagel', 'zelthering', 'erdnagel', 'bodennagel', 'zelthering'] },
-  { id: 'abspannung', label: 'Abspannung', Icon: Anchor, keywords: ['abspannung', 'spannleine', 'zeltleine', 'sturmleine', 'abspannleine', 'spanner', 'leinenspanner'] },
+  // --- Pfadfinder ---
+  { id: 'lilie', label: 'Lilie', motif: MOTIFS.lilie, keywords: ['lilie', 'pfadfinderlilie', 'fleur de lis', 'scout', 'emblem', 'abzeichen', 'symbol pfadfinder'] },
+  { id: 'halstuch', label: 'Halstuch', motif: MOTIFS.halstuch, keywords: ['halstuch', 'halstucher', 'tuch', 'scouttuch', 'gruppentuch', 'stammestuch', 'pfadfindertuch'] },
+  { id: 'kluft', label: 'Kluft', motif: MOTIFS.kluft, keywords: ['kluft', 'pfadfinderhemd', 'pfadfinderkluft', 'hemd', 'uniform', 'fahrtenhemd', 'scouthemd'] },
+  { id: 'wimpel', label: 'Wimpel', motif: MOTIFS.wimpel, keywords: ['wimpel', 'gruppenwimpel', 'stander', 'standarte', 'pfadfinderwimpel'] },
+  { id: 'kompass', label: 'Kompass', motif: MOTIFS.kompass, keywords: ['kompass', 'navigation', 'orientierung', 'richtung', 'himmelsrichtung', 'marschkompass', 'peilkompass', 'nordung'] },
+  { id: 'karte', label: 'Landkarte', motif: MOTIFS.karte, keywords: ['karte', 'landkarte', 'wanderkarte', 'gelandekarte', 'orientierungskarte', 'topografische karte', 'routenkarte', 'kartenmaterial', 'stadtplan'] },
+  { id: 'wegweiser', label: 'Wegweiser', motif: MOTIFS.wegweiser, keywords: ['wegweiser', 'richtungsweiser', 'wegschild', 'schild', 'abzweigung', 'wegmarkierung', 'wegzeichen', 'markierung'] },
+  { id: 'lagerfeuer', label: 'Lagerfeuer', motif: MOTIFS.lagerfeuer, keywords: ['feuer', 'lagerfeuer', 'campfire', 'feuerstelle', 'lager', 'feuerplatz', 'flamme', 'glut', 'brennholz', 'feuerholz'] },
+  { id: 'zelt', label: 'Zelt', motif: MOTIFS.zelt, keywords: ['zelt', 'campingzelt', 'schlafzelt', 'trekkingzelt', 'lagerzelt', 'unterkunft', 'zelten', 'hauszelt', 'kuppelzelt', 'igluzelt', 'wurfzelt', 'gruppenzelt', 'mannschaftszelt'] },
+  { id: 'kothe', label: 'Kothe', motif: MOTIFS.kothe, keywords: ['kothe', 'kohte', 'kote', 'kohten', 'schwarzzelt', 'viereckzelt', 'kohtenbahn'] },
+  { id: 'jurte', label: 'Jurte', motif: MOTIFS.jurte, keywords: ['jurte', 'jurtenzelt', 'pfadfinderjurte', 'grosszelt', 'rundzelt', 'tipi', 'tepee', 'jurtendach', 'jurtenwand'] },
+  { id: 'rucksack', label: 'Rucksack', motif: MOTIFS.rucksack, keywords: ['rucksack', 'wanderrucksack', 'trekkingrucksack', 'backpack', 'gepack', 'tagesrucksack', 'tourenrucksack', 'daypack', 'kraxe'] },
+  { id: 'affe', label: 'Rucksack „Affe“', motif: MOTIFS.affe, keywords: ['affe', 'affenrucksack', 'militarrucksack', 'schweizer rucksack', 'rollrucksack', 'packrolle'] },
 
-  // --- Seil, Bund & Aufbau ---
-  { id: 'seil', label: 'Seil', Icon: Anchor, keywords: ['seil', 'seile', 'tau', 'reepschnur', 'leine', 'kordel', 'schnur', 'bundseil', 'kletterseil', 'statikseil'] },
-  { id: 'bundstock', label: 'Stange / Bundstock', Icon: Fence, keywords: ['stange', 'stangen', 'bundstock', 'bundstocke', 'holzstange', 'zeltstock', 'jurtenstange', 'spiere', 'pfahl'] },
-  { id: 'karabiner', label: 'Karabiner', Icon: Key, keywords: ['karabiner', 'schaekel', 'haken', 'karabinerhaken', 'stahlkarabiner'] },
-  { id: 'werkzeug', label: 'Werkzeug', Icon: Wrench, keywords: ['werkzeug', 'werkzeugkasten', 'schraubenschlussel', 'zange', 'kombizange', 'schraubendreher', 'saege', 'saege', 'fuchsschwanz', 'feile', 'schraubstock'] },
-  { id: 'hammer', label: 'Hammer', Icon: Hammer, keywords: ['hammer', 'faustel', 'faeustel', 'schlegel', 'vorschlaghammer', 'gummihammer', 'holzhammer', 'klopfer'] },
-  { id: 'axt', label: 'Axt / Beil', Icon: Pickaxe, keywords: ['axt', 'beil', 'handbeil', 'spaltaxt', 'holzaxt', 'hacke', 'spalthammer', 'kappbeil'] },
-  { id: 'spaten', label: 'Spaten / Schaufel', Icon: Shovel, keywords: ['spaten', 'schaufel', 'klappspaten', 'feldspaten', 'grabewerkzeug', 'sappe', 'latrinenschaufel'] },
-  { id: 'messer', label: 'Messer', Icon: Scissors, keywords: ['messer', 'taschenmesser', 'fahrtenmesser', 'klappmesser', 'kuchenmesser', 'schnitzmesser', 'opinel'] },
-  { id: 'schere', label: 'Schere', Icon: Scissors, keywords: ['schere', 'scheren', 'stoffschere', 'gartenschere', 'astschere'] },
-  { id: 'meterstab', label: 'Maßband / Meterstab', Icon: Ruler, keywords: ['massband', 'meterstab', 'zollstock', 'bandmass', 'lineal', 'gliedermassstab'] },
-  { id: 'draht', label: 'Draht / Kette', Icon: Nut, keywords: ['draht', 'kette', 'ketten', 'bindedraht', 'spanndraht', 'schraube', 'schrauben', 'nagel', 'naegel', 'muttern', 'kleinteile'] },
+  // --- Schlafen & Zelt-Zubehör ---
+  { id: 'schlafsack', label: 'Schlafsack', motif: MOTIFS.schlafsack, keywords: ['schlafsack', 'schlafsacke', 'daunenschlafsack', 'sommerschlafsack', 'huttenschlafsack', 'inlett', 'zeltschlafsack'] },
+  { id: 'isomatte', label: 'Isomatte', motif: MOTIFS.isomatte, keywords: ['isomatte', 'schlafmatte', 'campingmatte', 'luftmatratze', 'unterlage', 'schlafunterlage', 'matte', 'thermomatte', 'karrimatte'] },
+  { id: 'plane', label: 'Plane / Tarp', motif: MOTIFS.plane, keywords: ['plane', 'zeltplane', 'abdeckplane', 'tarp', 'lagerplane', 'wetterschutz', 'regenplane', 'bodenplane', 'zeltboden', 'persenning'] },
+  { id: 'hering', label: 'Hering / Zeltnagel', motif: MOTIFS.hering, keywords: ['hering', 'heringe', 'zelthering', 'erdnagel', 'bodenanker', 'zeltbefestigung', 'zeltnagel', 'bodennagel'] },
+  { id: 'abspannseil', label: 'Abspannseil', motif: MOTIFS.abspannseil, keywords: ['abspannseil', 'spannseil', 'zeltleine', 'abspannung', 'spannleine', 'sturmleine', 'leinenspanner', 'spanner'] },
+  { id: 'zeltstange', label: 'Zeltstange', motif: MOTIFS.zeltstange, keywords: ['zeltstange', 'zeltstock', 'stange', 'gestange', 'zeltaufbau', 'holzstange', 'kohtenstange', 'bundstock', 'spiere', 'pfahl'] },
+  { id: 'hammer', label: 'Hammer', motif: MOTIFS.hammer, keywords: ['hammer', 'zelthammer', 'schlosserhammer', 'campinghammer', 'faustel', 'faeustel', 'schlegel', 'vorschlaghammer', 'gummihammer', 'holzhammer', 'klopfer'] },
 
   // --- Feuer & Licht ---
-  { id: 'lagerfeuer', label: 'Lagerfeuer', Icon: Flame, keywords: ['feuer', 'lagerfeuer', 'feuerstelle', 'flamme', 'glut', 'kohle', 'holzkohle', 'brennholz', 'feuerholz', 'feuerschale'] },
-  { id: 'feuerstahl', label: 'Feuerstahl / Zunder', Icon: FlameKindling, keywords: ['feuerstahl', 'feuerzeug', 'zunder', 'zundholz', 'streichholz', 'streichholzer', 'anzunder', 'zundwolle', 'magnesium', 'feuerstein'] },
-  { id: 'brennstoff', label: 'Brennstoff / Gas', Icon: Fuel, keywords: ['brennstoff', 'benzin', 'petroleum', 'spiritus', 'gaskartusche', 'gasflasche', 'brennpaste', 'kraftstoff', 'kanister'] },
-  { id: 'feuerlöscher', label: 'Feuerlöscher', Icon: FireExtinguisher, keywords: ['feuerloscher', 'loschdecke', 'brandschutz', 'loschmittel'] },
-  { id: 'taschenlampe', label: 'Taschenlampe', Icon: Flashlight, keywords: ['taschenlampe', 'lampe', 'stirnlampe', 'kopflampe', 'handlampe', 'led lampe'] },
-  { id: 'laterne', label: 'Laterne / Licht', Icon: Lamp, keywords: ['laterne', 'sturmlaterne', 'petroleumlampe', 'campinglampe', 'gaslampe', 'kerze', 'kerzen', 'teelicht', 'windlicht', 'lampion'] },
-  { id: 'batterie', label: 'Batterie / Akku', Icon: BatteryCharging, keywords: ['batterie', 'batterien', 'akku', 'akkus', 'powerbank', 'ladegerat', 'aa', 'aaa', 'knopfzelle'] },
-  { id: 'strom', label: 'Strom / Kabel', Icon: Zap, keywords: ['strom', 'kabel', 'verlangerungskabel', 'kabeltrommel', 'stecker', 'steckdose', 'generator', 'aggregat', 'mehrfachsteckdose'] },
+  { id: 'kocher', label: 'Kocher', motif: MOTIFS.kocher, keywords: ['gaskocher', 'campingkocher', 'kocher', 'outdoorkocher', 'brenner', 'kochstelle', 'spirituskocher', 'hobokocher', 'trangia'] },
+  { id: 'hockerkocher', label: 'Hockerkocher', motif: MOTIFS.hockerkocher, keywords: ['hockerkocher', 'kastenkocher', 'vierkocher'] },
+  { id: 'laterne', label: 'Laterne', motif: MOTIFS.laterne, keywords: ['laterne', 'campinglaterne', 'lagerlaterne', 'gaslaterne', 'licht', 'beleuchtung', 'lampe', 'sturmlaterne', 'petroleumlampe', 'windlicht'] },
+  { id: 'stirnlampe', label: 'Stirnlampe', motif: MOTIFS.stirnlampe, keywords: ['stirnlampe', 'kopflampe', 'headlamp'] },
+  { id: 'taschenlampe', label: 'Taschenlampe', motif: MOTIFS.taschenlampe, keywords: ['taschenlampe', 'handlampe', 'outdoorlampe', 'notlicht', 'led lampe'] },
+  { id: 'feuerstahl', label: 'Feuerstahl', motif: MOTIFS.feuerstahl, keywords: ['feuerstahl', 'feuerstarter', 'funken', 'zunder', 'feuerstein', 'magnesium'] },
+  { id: 'streichhoelzer', label: 'Streichhölzer', motif: MOTIFS.streichhoelzer, keywords: ['streichholzer', 'zundholzer', 'streichholz', 'zundholz', 'zunden'] },
+  { id: 'feueranzuender', label: 'Feueranzünder', motif: MOTIFS.feueranzuender, keywords: ['feueranzunder', 'anzunder', 'zundhilfe', 'kaminanzunder', 'brennhilfe', 'grillanzunder'] },
+  { id: 'feuerkorb', label: 'Feuerkorb', motif: MOTIFS.feuerkorb, keywords: ['feuerkorb', 'feuerschale'] },
+
+  // --- Werkzeug ---
+  { id: 'axt', label: 'Beil / Axt', motif: MOTIFS.axt, keywords: ['axt', 'beil', 'handbeil', 'spaltbeil', 'holzarbeiten', 'spaltaxt', 'holzaxt', 'hacke', 'kappbeil'] },
+  { id: 'saege', label: 'Säge', motif: MOTIFS.saege, keywords: ['sage', 'saege', 'handsage', 'klappsage', 'holzsage', 'astsage', 'fuchsschwanz'] },
+  { id: 'messer', label: 'Messer', motif: MOTIFS.messer, keywords: ['messer', 'taschenmesser', 'fahrtenmesser', 'outdoormesser', 'schnitzmesser', 'klappmesser', 'opinel'] },
+  { id: 'spaten', label: 'Spaten', motif: MOTIFS.spaten, keywords: ['spaten', 'schaufel', 'klappspaten', 'feldspaten', 'graben', 'latrinenschaufel', 'sappe', 'grabewerkzeug'] },
 
   // --- Kochen & Küche ---
-  { id: 'topf', label: 'Kochtopf', Icon: CookingPot, keywords: ['topf', 'kochtopf', 'kessel', 'gulaschkanone', 'feldkuche', 'dutch oven', 'dopf', 'bratentopf'] },
-  { id: 'kocher', label: 'Kocher', Icon: Flame, keywords: ['kocher', 'gaskocher', 'campingkocher', 'spirituskocher', 'hobokocher', 'trangia', 'gasgrill', 'kochstelle'] },
-  { id: 'pfanne', label: 'Pfanne', Icon: UtensilsCrossed, keywords: ['pfanne', 'bratpfanne', 'stielpfanne', 'grillpfanne', 'wok'] },
-  { id: 'geschirr', label: 'Geschirr / Besteck', Icon: Utensils, keywords: ['geschirr', 'teller', 'besteck', 'gabel', 'loffel', 'messer besteck', 'essgeschirr', 'menageschale', 'napf', 'schussel', 'schale'] },
-  { id: 'becher', label: 'Becher / Tasse', Icon: Coffee, keywords: ['becher', 'tasse', 'kaffeebecher', 'emaillebecher', 'kaffee', 'tee', 'thermoskanne', 'kanne', 'teekanne'] },
-  { id: 'trinkflasche', label: 'Trinkflasche', Icon: CupSoda, keywords: ['trinkflasche', 'feldflasche', 'flasche', 'nalgene', 'trinkblase', 'trinksystem', 'wasserflasche'] },
-  { id: 'kanister', label: 'Wasserkanister', Icon: Droplets, keywords: ['wasserkanister', 'wassersack', 'faltkanister', 'wasserbehalter', 'trinkwasser', 'wasserkanne'] },
-  { id: 'kuehlbox', label: 'Kühlbox', Icon: Package, keywords: ['kuhlbox', 'kuhltasche', 'kuhlakku', 'thermobox', 'eisbox'] },
-  { id: 'spuelmittel', label: 'Spülzeug', Icon: Droplet, keywords: ['spulmittel', 'spulzeug', 'spulbecken', 'spulschussel', 'geschirrtuch', 'schwamm', 'burste', 'spulburste'] },
+  { id: 'feldflasche', label: 'Feldflasche', motif: MOTIFS.feldflasche, keywords: ['feldflasche', 'outdoorflasche'] },
+  { id: 'trinkflasche', label: 'Trinkflasche', motif: MOTIFS.trinkflasche, keywords: ['trinkflasche', 'wasserflasche', 'flasche', 'trinkgefass', 'getrank', 'nalgene', 'trinkblase', 'trinksystem'] },
+  { id: 'tasse', label: 'Tasse', motif: MOTIFS.tasse, keywords: ['tasse', 'becher', 'campingbecher', 'trinkbecher', 'henkeltasse', 'kaffeebecher', 'emaillebecher', 'kaffee', 'tee', 'kanne'] },
+  { id: 'topf', label: 'Kochtopf', motif: MOTIFS.topf, keywords: ['topf', 'kochtopf', 'campingtopf', 'lagertopf', 'kochgeschirr', 'gulaschkanone', 'feldkuche'] },
+  { id: 'pfanne', label: 'Pfanne', motif: MOTIFS.pfanne, keywords: ['pfanne', 'campingpfanne', 'bratpfanne', 'lagerpfanne', 'braten', 'stielpfanne', 'wok'] },
+  { id: 'kessel', label: 'Kessel', motif: MOTIFS.kessel, keywords: ['kessel', 'kochkessel', 'lagerkessel', 'wasserkessel', 'campingkessel', 'teekessel'] },
+  { id: 'wasserkanister', label: 'Wasserkanister', motif: MOTIFS.wasserkanister, keywords: ['wasserkanister', 'trinkwasser', 'wasservorrat', 'wasserbehalter', 'wasserkanne', 'wassersack', 'faltkanister'] },
+  { id: 'kanister', label: 'Kanister', motif: MOTIFS.kanister, keywords: ['kanister', 'behalter', 'vorratskanister', 'transportkanister', 'benzinkanister'] },
+  { id: 'gasflasche', label: 'Gasflasche', motif: MOTIFS.gasflasche, keywords: ['gasflasche', 'propangasflasche', 'gas', 'propan', 'brenngas', 'campinggas'] },
+  { id: 'gaskartusche', label: 'Gaskartusche', motif: MOTIFS.gaskartusche, keywords: ['gaskartusche', 'kartusche', 'kocherkartusche', 'brennstoff'] },
+  { id: 'dutchoven', label: 'Dutch Oven', motif: MOTIFS.dutchoven, keywords: ['dutch oven', 'dutchoven', 'feuertopf', 'gusseisentopf', 'lagerkuche', 'dopf'] },
+  { id: 'grillrost', label: 'Grillrost', motif: MOTIFS.grillrost, keywords: ['grillrost', 'grill', 'lagergrill', 'grillen', 'rost', 'grillkohle'] },
+  { id: 'kohlezange', label: 'Kohlezange', motif: MOTIFS.kohlezange, keywords: ['kohlezange', 'grillzange', 'feuerzange', 'zange', 'glut'] },
+  { id: 'topfheber', label: 'Topfheber', motif: MOTIFS.topfheber, keywords: ['topfheber', 'deckelheber', 'topfzange'] },
+  { id: 'schoepfkelle', label: 'Schöpfkelle', motif: MOTIFS.schoepfkelle, keywords: ['schopfkelle', 'kelle', 'suppenkelle', 'kochloffel', 'schaumloffel'] },
+  { id: 'schneidebrett', label: 'Schneidebrett', motif: MOTIFS.schneidebrett, keywords: ['schneidebrett', 'brett', 'kuchenbrett', 'hackbrett'] },
+  { id: 'besteck', label: 'Besteck', motif: MOTIFS.besteck, keywords: ['besteck', 'gabel', 'loffel', 'campingbesteck', 'essbesteck', 'geschirr', 'teller', 'essgeschirr', 'napf', 'schussel'] },
 
-  // --- Lebensmittel ---
-  { id: 'brot', label: 'Brot', Icon: Sandwich, keywords: ['brot', 'brote', 'stockbrot', 'brotchen', 'toast', 'knackebrot', 'zwieback'] },
-  { id: 'fleisch', label: 'Fleisch / Wurst', Icon: Ham, keywords: ['fleisch', 'wurst', 'wurstchen', 'grillfleisch', 'speck', 'schinken', 'salami', 'hackfleisch'] },
-  { id: 'grillgut', label: 'Grillgut', Icon: Drumstick, keywords: ['grillgut', 'grill', 'grillkohle', 'grillrost', 'huhnchen', 'haxe', 'spiess'] },
-  { id: 'fisch', label: 'Fisch', Icon: Fish, keywords: ['fisch', 'forelle', 'raucherfisch', 'raucherlachs'] },
-  { id: 'gemuese', label: 'Gemüse', Icon: Carrot, keywords: ['gemuse', 'karotte', 'mohre', 'kartoffel', 'zwiebel', 'salatgemuse', 'paprika', 'gurke'] },
-  { id: 'salat', label: 'Salat', Icon: Salad, keywords: ['salat', 'blattsalat', 'rohkost', 'salatschussel'] },
-  { id: 'obst', label: 'Obst', Icon: Apple, keywords: ['obst', 'apfel', 'apfel', 'banane', 'birne', 'fruchte', 'trockenobst'] },
-  { id: 'getreide', label: 'Getreide / Nudeln', Icon: Wheat, keywords: ['getreide', 'nudeln', 'reis', 'mehl', 'haferflocken', 'muesli', 'spaghetti', 'grundnahrung'] },
-  { id: 'ei', label: 'Eier', Icon: Egg, keywords: ['eier', 'fruhstucksei', 'ruhrei'] },
-  { id: 'milch', label: 'Milch', Icon: Milk, keywords: ['milch', 'h milch', 'kondensmilch', 'sahne', 'joghurt'] },
-  { id: 'suppe', label: 'Suppe / Eintopf', Icon: Soup, keywords: ['suppe', 'eintopf', 'bruhe', 'suppenkelle', 'chili'] },
+  // --- Hygiene & Sauberkeit ---
+  { id: 'muellsack', label: 'Müllsack', motif: MOTIFS.muellsack, keywords: ['mullsack', 'mullbeutel', 'abfall', 'abfallbeutel', 'mull', 'mulltute'] },
+  { id: 'seife', label: 'Seife', motif: MOTIFS.seife, keywords: ['seife', 'handseife', 'waschseife', 'hygiene', 'waschen', 'korperpflege', 'reinigung', 'duschgel', 'shampoo'] },
+  { id: 'handtuch', label: 'Handtuch', motif: MOTIFS.handtuch, keywords: ['handtuch', 'duschtuch', 'abtrocknen', 'badetuch'] },
+  { id: 'muelltrennung', label: 'Mülltrennung', motif: MOTIFS.muelltrennung, keywords: ['mulltrennung', 'recycling', 'abfalltrennung', 'nachhaltigkeit', 'umwelt', 'entsorgung', 'wertstoff'] },
 
-  // --- Wasser & Hygiene ---
-  { id: 'dusche', label: 'Dusche', Icon: ShowerHead, keywords: ['dusche', 'campingdusche', 'solardusche', 'duschzelt', 'waschgelegenheit'] },
-  { id: 'toilette', label: 'Toilette', Icon: Toilet, keywords: ['toilette', 'klo', 'campingtoilette', 'chemietoilette', 'latrine', 'toilettenpapier', 'klopapier'] },
-  { id: 'seife', label: 'Seife / Waschzeug', Icon: Droplet, keywords: ['seife', 'waschzeug', 'kulturbeutel', 'zahnburste', 'zahnpasta', 'shampoo', 'handtuch', 'waschlappen', 'duschgel'] },
-  { id: 'muell', label: 'Müll / Entsorgung', Icon: Trash2, keywords: ['mull', 'mulleimer', 'mullsack', 'mulltute', 'abfall', 'mullbeutel'] },
-
-  // --- Schlafen ---
-  { id: 'schlafsack', label: 'Schlafsack', Icon: Bed, keywords: ['schlafsack', 'schlafsacke', 'daunenschlafsack', 'sommerschlafsack', 'huttenschlafsack', 'inlett'] },
-  { id: 'isomatte', label: 'Isomatte', Icon: BedDouble, keywords: ['isomatte', 'schlafmatte', 'luftmatratze', 'thermomatte', 'feldbett', 'liege', 'matte', 'karrimatte'] },
-  { id: 'decke', label: 'Wolldecke', Icon: Layers, keywords: ['decke', 'wolldecke', 'kuscheldecke', 'kissen', 'kopfkissen', 'picknickdecke'] },
-  { id: 'nacht', label: 'Nachtruhe', Icon: Moon, keywords: ['nachtruhe', 'schlafmaske', 'ohrstopsel', 'ohropax'] },
-
-  // --- Kleidung ---
-  { id: 'kluft', label: 'Kluft / Kleidung', Icon: Shirt, keywords: ['kluft', 'kleidung', 'hemd', 'jacke', 'pullover', 'hose', 'wechselkleidung', 't shirt', 'fahrtenhemd'] },
-  { id: 'halstuch', label: 'Halstuch', Icon: Flag, keywords: ['halstuch', 'halstucher', 'tuch', 'knoten halstuch', 'stammestuch'] },
-  { id: 'regenjacke', label: 'Regenkleidung', Icon: Umbrella, keywords: ['regenjacke', 'regenkleidung', 'regenhose', 'regenponcho', 'poncho', 'matschhose', 'regenschutz'] },
-  { id: 'schuhe', label: 'Schuhe / Stiefel', Icon: Footprints, keywords: ['schuhe', 'stiefel', 'wanderschuhe', 'wanderstiefel', 'gummistiefel', 'sandalen', 'gamaschen'] },
-  { id: 'helm', label: 'Helm', Icon: HardHat, keywords: ['helm', 'schutzhelm', 'kletterhelm', 'bauhelm', 'kopfschutz'] },
-  { id: 'handschuhe', label: 'Handschuhe', Icon: Shield, keywords: ['handschuhe', 'arbeitshandschuhe', 'lederhandschuhe', 'topflappen', 'grillhandschuh'] },
-  { id: 'brille', label: 'Brille', Icon: Glasses, keywords: ['brille', 'sonnenbrille', 'schutzbrille', 'lesebrille'] },
-  { id: 'muetze', label: 'Mütze / Hut', Icon: HardHat, keywords: ['mutze', 'hut', 'kappe', 'basecap', 'sonnenhut', 'strickmutze'] },
-
-  // --- Erste Hilfe ---
-  { id: 'erstehilfe', label: 'Erste Hilfe', Icon: Cross, keywords: ['erste hilfe', 'erstehilfe', 'verbandskasten', 'sanitatskasten', 'sani', 'notfall', 'verbandtasche'] },
-  { id: 'pflaster', label: 'Pflaster / Verband', Icon: Bandage, keywords: ['pflaster', 'verband', 'binde', 'mullbinde', 'kompresse', 'blasenpflaster', 'tape'] },
-  { id: 'medikament', label: 'Medikamente', Icon: Pill, keywords: ['medikament', 'tabletten', 'schmerzmittel', 'salbe', 'desinfektion', 'wunddesinfektion', 'zeckenzange', 'apotheke'] },
-  { id: 'fieber', label: 'Fieberthermometer', Icon: Stethoscope, keywords: ['fieberthermometer', 'thermometer klinisch', 'blutdruck'] },
-
-  // --- Navigation & Orientierung ---
-  { id: 'kompass', label: 'Kompass', Icon: Compass, keywords: ['kompass', 'peilkompass', 'orientierung', 'nordung'] },
-  { id: 'karte', label: 'Landkarte', Icon: MapIcon, keywords: ['karte', 'landkarte', 'wanderkarte', 'topografische karte', 'stadtplan', 'kartenmaterial'] },
-  { id: 'gps', label: 'GPS / Ortung', Icon: MapPin, keywords: ['gps', 'gps gerat', 'ortung', 'wegpunkt', 'geocaching', 'tracker'] },
-  { id: 'wegweiser', label: 'Wegweiser', Icon: Signpost, keywords: ['wegweiser', 'schild', 'wegmarkierung', 'markierung', 'wegzeichen'] },
-  { id: 'route', label: 'Route / Tour', Icon: Route, keywords: ['route', 'tour', 'wanderung', 'strecke', 'etappe', 'roadbook'] },
-  { id: 'fernglas', label: 'Fernglas', Icon: Binoculars, keywords: ['fernglas', 'fernglaser', 'monokular', 'spektiv'] },
-  { id: 'navigation', label: 'Navigation', Icon: Navigation, keywords: ['navigation', 'navi', 'peilung', 'winkel'] },
-
-  // --- Gepäck & Transport ---
-  { id: 'rucksack', label: 'Rucksack', Icon: Backpack, keywords: ['rucksack', 'tourenrucksack', 'trekkingrucksack', 'kraxe', 'tagesrucksack', 'daypack'] },
-  { id: 'seesack', label: 'Seesack / Tasche', Icon: Package, keywords: ['seesack', 'reisetasche', 'sporttasche', 'packsack', 'duffel', 'tragetasche', 'beutel'] },
-  { id: 'kiste', label: 'Kiste / Box', Icon: Package, keywords: ['kiste', 'box', 'transportkiste', 'materialkiste', 'eurobox', 'aufbewahrungsbox', 'stapelbox'] },
-  { id: 'anhaenger', label: 'Anhänger / Wagen', Icon: Caravan, keywords: ['anhanger', 'hanger', 'bollerwagen', 'handwagen', 'transportwagen', 'karre', 'sackkarre'] },
-  { id: 'boot', label: 'Boot / Kanu', Icon: Sailboat, keywords: ['boot', 'kanu', 'kajak', 'kanadier', 'paddelboot', 'schlauchboot', 'floss'] },
-  { id: 'paddel', label: 'Paddel', Icon: Anchor, keywords: ['paddel', 'ruder', 'stechpaddel', 'doppelpaddel'] },
-  { id: 'schwimmweste', label: 'Schwimmweste', Icon: LifeBuoy, keywords: ['schwimmweste', 'rettungsweste', 'schwimmhilfe', 'rettungsring', 'auftriebshilfe'] },
-
-  // --- Programm, Spiel & Musik ---
-  { id: 'spiel', label: 'Spiel', Icon: Gamepad, keywords: ['spiel', 'spiele', 'gelandespiel', 'brettspiel', 'kartenspiel', 'ballspiel'] },
-  { id: 'wuerfel', label: 'Würfel', Icon: Dices, keywords: ['wurfel', 'wurfelspiel', 'kniffel'] },
-  { id: 'ball', label: 'Ball', Icon: Trophy, keywords: ['ball', 'fussball', 'volleyball', 'frisbee', 'wikinger schach', 'kubb'] },
-  { id: 'gitarre', label: 'Gitarre', Icon: Guitar, keywords: ['gitarre', 'klampfe', 'ukulele', 'saiteninstrument'] },
-  { id: 'trommel', label: 'Trommel', Icon: Drum, keywords: ['trommel', 'djembe', 'cajon', 'percussion'] },
-  { id: 'liederbuch', label: 'Liederbuch', Icon: BookOpen, keywords: ['liederbuch', 'lieder', 'songbook', 'gesangbuch', 'ei gude'] },
-  { id: 'musik', label: 'Musik / Lautsprecher', Icon: Megaphone, keywords: ['lautsprecher', 'box musik', 'megafon', 'megaphon', 'flustertute', 'verstarker'] },
-
-  // --- Fahne, Auszeichnung & Zeremonie ---
-  { id: 'fahne', label: 'Fahne / Wimpel', Icon: Flag, keywords: ['fahne', 'flagge', 'wimpel', 'banner', 'stander', 'stammesfahne'] },
-  { id: 'abzeichen', label: 'Abzeichen', Icon: Award, keywords: ['abzeichen', 'aufnaher', 'patch', 'button', 'anstecker', 'orden'] },
-  { id: 'pokal', label: 'Pokal / Preis', Icon: Trophy, keywords: ['pokal', 'preis', 'siegespreis', 'trophae'] },
-  { id: 'medaille', label: 'Medaille', Icon: Medal, keywords: ['medaille', 'auszeichnung', 'ehrenzeichen'] },
-
-  // --- Schreiben & Orga ---
-  { id: 'buch', label: 'Buch', Icon: Book, keywords: ['buch', 'bucher', 'handbuch', 'nachschlagewerk', 'pfadfinderbuch'] },
-  { id: 'notizbuch', label: 'Notizbuch', Icon: Notebook, keywords: ['notizbuch', 'block', 'notizblock', 'tagebuch', 'fahrtenbuch', 'kladde'] },
-  { id: 'stift', label: 'Stift', Icon: Pencil, keywords: ['stift', 'stifte', 'kugelschreiber', 'bleistift', 'filzstift', 'edding', 'marker'] },
-  { id: 'liste', label: 'Liste / Packliste', Icon: ClipboardList, keywords: ['liste', 'packliste', 'checkliste', 'inventarliste', 'teilnehmerliste'] },
-  { id: 'klemmbrett', label: 'Klemmbrett', Icon: Clipboard, keywords: ['klemmbrett', 'klemmbretter', 'schreibunterlage'] },
-  { id: 'urkunde', label: 'Urkunde / Dokument', Icon: Scroll, keywords: ['urkunde', 'dokument', 'formular', 'anmeldung', 'papier', 'unterlagen'] },
+  // --- Erste Hilfe & Sicherheit ---
+  { id: 'erstehilfe', label: 'Erste Hilfe', motif: MOTIFS.erstehilfe, keywords: ['erste hilfe', 'erstehilfe', 'verbandskasten', 'sanitatskasten', 'sani', 'notfall', 'verbandtasche', 'sanitatsmaterial'] },
+  { id: 'pflaster', label: 'Pflaster', motif: MOTIFS.pflaster, keywords: ['pflaster', 'heftpflaster', 'wundpflaster', 'blasenpflaster', 'tape'] },
+  { id: 'desinfektion', label: 'Desinfektion', motif: MOTIFS.desinfektion, keywords: ['desinfektionsmittel', 'desinfektion', 'wunddesinfektion', 'handedesinfektion'] },
+  { id: 'verband', label: 'Verband', motif: MOTIFS.verband, keywords: ['verband', 'verbandpackchen', 'mullbinde', 'wundverband', 'binde', 'kompresse'] },
+  { id: 'rettungsdecke', label: 'Rettungsdecke', motif: MOTIFS.rettungsdecke, keywords: ['rettungsdecke', 'notfalldecke', 'warmedecke', 'rettung', 'unterkuhlung'] },
+  { id: 'notfallpfeife', label: 'Notfallpfeife', motif: MOTIFS.notfallpfeife, keywords: ['notfallpfeife', 'signalpfeife', 'pfeife', 'notsignal', 'trillerpfeife'] },
+  { id: 'signalhorn', label: 'Signalhorn', motif: MOTIFS.signalhorn, keywords: ['signalhorn', 'horn', 'signal', 'alarm', 'drucklufthorn'] },
+  { id: 'mueckenschutz', label: 'Mückenschutz', motif: MOTIFS.mueckenschutz, keywords: ['muckenschutz', 'insektenschutz', 'moskitoschutz', 'mucken', 'repellent', 'autan', 'muckenspray', 'zeckenschutz'] },
 
   // --- Elektronik & Kommunikation ---
-  { id: 'funk', label: 'Funkgerät', Icon: Radio, keywords: ['funk', 'funkgerat', 'walkie talkie', 'sprechfunk', 'cb funk'] },
-  { id: 'handy', label: 'Handy / Smartphone', Icon: Phone, keywords: ['handy', 'smartphone', 'telefon', 'mobiltelefon'] },
-  { id: 'kamera', label: 'Kamera', Icon: Camera, keywords: ['kamera', 'fotoapparat', 'fotokamera', 'gopro', 'actioncam'] },
-  { id: 'satellit', label: 'Satelliten-Telefon', Icon: Satellite, keywords: ['satellitentelefon', 'satphone', 'notfunk', 'notsender', 'plb'] },
+  { id: 'funkgeraet', label: 'Funkgerät', motif: MOTIFS.funkgeraet, keywords: ['funkgerat', 'walkie talkie', 'funk', 'sprechfunk', 'cb funk'] },
+  { id: 'powerbank', label: 'Powerbank', motif: MOTIFS.powerbank, keywords: ['powerbank', 'akku', 'ladegerat', 'usb', 'stromversorgung', 'batterie', 'akkupack'] },
+  { id: 'solarpanel', label: 'Solarpanel', motif: MOTIFS.solarpanel, keywords: ['solarpanel', 'solarladegerat', 'solarzelle', 'sonnenenergie', 'solarmodul', 'solarstrom'] },
+  { id: 'kamera', label: 'Kamera', motif: MOTIFS.kamera, keywords: ['kamera', 'fotoapparat', 'fotografieren', 'fotokamera', 'gopro', 'actioncam', 'bilder'] },
 
-  // --- Wetter & Natur ---
-  { id: 'sonne', label: 'Sonnenschutz', Icon: Sun, keywords: ['sonnenschutz', 'sonnencreme', 'sonnenmilch', 'sonnenschirm', 'lsf'] },
-  { id: 'regen', label: 'Regen', Icon: CloudRain, keywords: ['regen', 'regenschirm', 'schirm', 'regenwetter'] },
-  { id: 'schnee', label: 'Schnee / Kälte', Icon: Snowflake, keywords: ['schnee', 'kalte', 'frost', 'eis', 'winterausrustung'] },
-  { id: 'wind', label: 'Wind', Icon: Wind, keywords: ['wind', 'sturm', 'windschutz', 'windsack'] },
-  { id: 'wolke', label: 'Wetter', Icon: Cloud, keywords: ['wetter', 'wolke', 'wetterstation', 'barometer'] },
-  { id: 'thermometer', label: 'Thermometer', Icon: Thermometer, keywords: ['thermometer', 'temperatur', 'aussenthermometer'] },
-  { id: 'baum', label: 'Baum / Wald', Icon: TreePine, keywords: ['baum', 'wald', 'tanne', 'nadelbaum', 'forst'] },
-  { id: 'laubbaum', label: 'Laub / Bäume', Icon: Trees, keywords: ['baume', 'laubbaum', 'hain', 'geholz'] },
-  { id: 'blatt', label: 'Blatt / Laub', Icon: Leaf, keywords: ['blatt', 'laub', 'blatter', 'zweig'] },
-  { id: 'pflanze', label: 'Pflanze / Kräuter', Icon: Sprout, keywords: ['pflanze', 'kraut', 'krauter', 'setzling', 'keimling'] },
-  { id: 'blume', label: 'Blume', Icon: Flower, keywords: ['blume', 'blumen', 'wiese', 'blute'] },
-  { id: 'klee', label: 'Lilie / Klee', Icon: Clover, keywords: ['klee', 'kleeblatt', 'lilie', 'pfadfinderlilie', 'wappen'] },
-  { id: 'berg', label: 'Berg', Icon: Mountain, keywords: ['berg', 'gebirge', 'gipfel', 'alpen', 'huette', 'wanderberg'] },
-  { id: 'wasser', label: 'Wasser / See', Icon: Waves, keywords: ['wasser', 'see', 'fluss', 'bach', 'teich', 'gewasser', 'baden'] },
-  { id: 'vogel', label: 'Vogel', Icon: Bird, keywords: ['vogel', 'vogel', 'meise', 'greifvogel'] },
-  { id: 'hund', label: 'Hund / Tier', Icon: Dog, keywords: ['hund', 'tier', 'haustier', 'wachhund'] },
-  { id: 'insekt', label: 'Insekten / Mücken', Icon: Bug, keywords: ['insekt', 'mucke', 'mucken', 'muckenschutz', 'muckenspray', 'zecke', 'insektenschutz', 'autan'] },
-  { id: 'feder', label: 'Feder', Icon: Feather, keywords: ['feder', 'federn', 'schmuckfeder'] },
+  // --- Navigation & Beobachtung ---
+  { id: 'lupe', label: 'Lupe', motif: MOTIFS.lupe, keywords: ['lupe', 'vergrosserungsglas', 'vergroserung', 'forschen'] },
+  { id: 'fernglas', label: 'Fernglas', motif: MOTIFS.fernglas, keywords: ['fernglas', 'binokular', 'feldstecher', 'monokular', 'spektiv'] },
+  { id: 'uhr', label: 'Uhr', motif: MOTIFS.uhr, keywords: ['uhr', 'armbanduhr', 'zeit', 'uhrzeit', 'wecker', 'stoppuhr', 'taschenuhr'] },
+  { id: 'sonnenbrille', label: 'Sonnenbrille', motif: MOTIFS.sonnenbrille, keywords: ['sonnenbrille', 'brille', 'sonnenschutz brille', 'schutzbrille', 'uv brille'] },
+  { id: 'stern', label: 'Stern / Norden', motif: MOTIFS.stern, keywords: ['stern', 'norden', 'kompassrose', 'nordstern', 'polarstern'] },
+  { id: 'sonne', label: 'Sonne', motif: MOTIFS.sonne, keywords: ['sonne', 'sonnig', 'sonnencreme', 'sonnenmilch', 'sonnenschein', 'sonnenschutz'] },
+  { id: 'mond', label: 'Mond', motif: MOTIFS.mond, keywords: ['mond', 'nacht', 'nachtruhe', 'halbmond', 'mondlicht'] },
+  { id: 'baum', label: 'Baum / Wald', motif: MOTIFS.baum, keywords: ['baum', 'wald', 'tanne', 'nadelbaum', 'forst', 'baume', 'geholz'] },
+  { id: 'berg', label: 'Berg', motif: MOTIFS.berg, keywords: ['berg', 'gebirge', 'gipfel', 'alpen', 'wanderberg', 'huette'] },
+  { id: 'wasser', label: 'Wasser / See', motif: MOTIFS.wasser, keywords: ['wasser', 'see', 'fluss', 'bach', 'teich', 'gewasser', 'baden', 'welle'] },
+  { id: 'spur', label: 'Pfad / Spur', motif: MOTIFS.spur, keywords: ['pfad', 'spur', 'fussspur', 'fahrte', 'trittsiegel', 'weg'] },
 
-  // --- Sonstiges Material ---
-  { id: 'schloss', label: 'Schloss', Icon: Lock, keywords: ['schloss', 'vorhangeschloss', 'zahlenschloss', 'fahrradschloss'] },
-  { id: 'schluessel', label: 'Schlüssel', Icon: Key, keywords: ['schlussel', 'schlusselbund', 'zundschlussel'] },
-  { id: 'glocke', label: 'Glocke', Icon: Bell, keywords: ['glocke', 'schelle', 'klingel', 'signalglocke'] },
-  { id: 'ticket', label: 'Ticket / Karten', Icon: Ticket, keywords: ['ticket', 'eintrittskarte', 'fahrkarte', 'bahnticket', 'gutschein'] },
-  { id: 'pinsel', label: 'Pinsel / Farbe', Icon: Brush, keywords: ['pinsel', 'farbe', 'malerpinsel', 'lack', 'sprayfarbe', 'kreide'] },
-  { id: 'uhr', label: 'Uhr', Icon: Watch, keywords: ['uhr', 'armbanduhr', 'wecker', 'stoppuhr', 'taschenuhr'] },
-  { id: 'teleskop', label: 'Teleskop', Icon: Telescope, keywords: ['teleskop', 'fernrohr', 'sternenkucker', 'astronomie'] },
+  // --- Kleidung ---
+  { id: 'regenjacke', label: 'Regenjacke', motif: MOTIFS.regenjacke, keywords: ['regenjacke', 'wetterschutz jacke', 'regenbekleidung', 'outdoorjacke', 'jacke', 'wasserschutz', 'funktionsjacke', 'hardshell', 'matschjacke'] },
+  { id: 'regenponcho', label: 'Regenponcho', motif: MOTIFS.regenponcho, keywords: ['regenponcho', 'poncho', 'regenumhang', 'regencape'] },
+  { id: 'fleecejacke', label: 'Fleecejacke', motif: MOTIFS.fleecejacke, keywords: ['fleece', 'fleecejacke', 'pullover', 'softshell', 'walkjacke'] },
+  { id: 'tshirt', label: 'T-Shirt', motif: MOTIFS.tshirt, keywords: ['t shirt', 'shirt', 'oberbekleidung', 'freizeitshirt', 'gruppenshirt', 'leibchen', 'trikot'] },
+  { id: 'hose', label: 'Hose', motif: MOTIFS.hose, keywords: ['hose', 'outdoorhose', 'wanderhose', 'trekkinghose', 'zipphose', 'matschhose', 'buxe'] },
+  { id: 'guertel', label: 'Gürtel', motif: MOTIFS.guertel, keywords: ['gurtel', 'koppel', 'huftgurtel', 'leibriemen'] },
+  { id: 'hut', label: 'Hut', motif: MOTIFS.hut, keywords: ['hut', 'sonnenhut', 'kopfbedeckung', 'schlapphut', 'cowboyhut'] },
+  { id: 'muetze', label: 'Mütze', motif: MOTIFS.muetze, keywords: ['mutze', 'strickmutze', 'wintermutze', 'beanie', 'kappe', 'basecap'] },
+  { id: 'handschuhe', label: 'Handschuhe', motif: MOTIFS.handschuhe, keywords: ['handschuhe', 'arbeitshandschuhe', 'schutzhandschuhe', 'arbeitsschutz', 'lederhandschuhe', 'fausthandschuhe', 'faustlinge'] },
+  { id: 'stiefel', label: 'Stiefel', motif: MOTIFS.stiefel, keywords: ['stiefel', 'wanderstiefel', 'trekkingstiefel', 'wanderschuhe', 'schuhe', 'bergstiefel'] },
+  { id: 'gummistiefel', label: 'Gummistiefel', motif: MOTIFS.gummistiefel, keywords: ['gummistiefel', 'regenstiefel', 'matschstiefel', 'wasserschuhe'] },
+  { id: 'sandalen', label: 'Sandalen', motif: MOTIFS.sandalen, keywords: ['sandalen', 'outdoorsandalen', 'sommerschuhe', 'badeschuhe', 'trekkingsandalen'] },
+
+  // --- Seil & Verbindung ---
+  { id: 'seil', label: 'Seil', motif: MOTIFS.seil, keywords: ['seil', 'kletterseil', 'arbeitsseil', 'tau', 'statikseil', 'bundseil', 'reepschnur'] },
+  { id: 'schnur', label: 'Schnur', motif: MOTIFS.schnur, keywords: ['schnur', 'kordel', 'paketschnur', 'bindeschnur', 'garn', 'leine'] },
+  { id: 'knoten', label: 'Knoten', motif: MOTIFS.knoten, keywords: ['knoten', 'seilknoten', 'pfadfinderknoten', 'knotenkunde', 'seiltechnik', 'knupfen', 'binden'] },
+  { id: 'karabiner', label: 'Karabiner', motif: MOTIFS.karabiner, keywords: ['karabiner', 'karabinerhaken', 'haken', 'sicherung', 'stahlkarabiner', 'schakel'] },
+  { id: 'bandschlinge', label: 'Bandschlinge', motif: MOTIFS.bandschlinge, keywords: ['bandschlinge', 'schlinge', 'rundschlinge', 'gurtband', 'gurt'] },
+
+  // --- Schreiben & Orga ---
+  { id: 'notizbuch', label: 'Notizbuch', motif: MOTIFS.notizbuch, keywords: ['notizbuch', 'notizen', 'tagebuch', 'fahrtenbuch', 'lagerbuch', 'kladde', 'block', 'notizblock', 'buch'] },
+  { id: 'stift', label: 'Stift', motif: MOTIFS.stift, keywords: ['stift', 'kugelschreiber', 'schreibstift', 'bleistift', 'filzstift', 'edding', 'marker', 'kuli'] },
+  { id: 'kalender', label: 'Kalender', motif: MOTIFS.kalender, keywords: ['kalender', 'termin', 'datum', 'zeitplan', 'planung'] },
+  { id: 'nachricht', label: 'Nachricht', motif: MOTIFS.nachricht, keywords: ['nachricht', 'nachrichten', 'brief', 'mail', 'email', 'post', 'umschlag', 'kontakt'] },
+
+  // --- Gruppe, Lagerbau & Programm ---
+  { id: 'fahne', label: 'Fahne', motif: MOTIFS.fahne, keywords: ['fahne', 'flagge', 'gruppenfahne', 'lagerfahne', 'banner', 'stammesfahne'] },
+  { id: 'gruppe', label: 'Gruppe', motif: MOTIFS.gruppe, keywords: ['gruppe', 'team', 'pfadfindergruppe', 'gemeinschaft', 'stammesgruppe', 'teilnehmer', 'personen', 'sippe', 'meute', 'trupp'] },
+  { id: 'schaukel', label: 'Schaukel', motif: MOTIFS.schaukel, keywords: ['schaukel', 'spielgerat', 'schaukeln'] },
+  { id: 'seilbahn', label: 'Seilbahn', motif: MOTIFS.seilbahn, keywords: ['seilbahn', 'flying fox', 'seilrutsche', 'zipline', 'kletterelement'] },
+  { id: 'lagerbock', label: 'Lagerbock', motif: MOTIFS.lagerbock, keywords: ['lagerbock', 'kochbock', 'dreibein', 'holzbau', 'lagerbau', 'gestell'] },
+
+  // --- Gepäck & Transport ---
+  { id: 'kiste', label: 'Kiste / Box', motif: MOTIFS.paket, keywords: ['kiste', 'box', 'transportkiste', 'materialkiste', 'eurobox', 'aufbewahrungsbox', 'stapelbox', 'seesack', 'tasche', 'packsack'] },
 ];
 
 // --- Normalisierung & Index --------------------------------------------------
@@ -339,7 +207,7 @@ const cache = new Map<string, IconEntry | null>();
 
 /**
  * Ordnet einem Gegenstandsnamen das beste Icon zu (oder `null`, wenn nichts
- * ausreichend passt — Aufrufer nutzen dann {@link FALLBACK_ICON}). Ergebnisse
+ * ausreichend passt — Aufrufer nutzen dann {@link FALLBACK_MOTIF}). Ergebnisse
  * werden pro Name gecached, da Listen häufig neu rendern.
  */
 export function matchIconEntry(rawName: string): IconEntry | null {
@@ -376,8 +244,16 @@ export function matchIconEntry(rawName: string): IconEntry | null {
   return fuzzy?.entry ?? null;
 }
 
-/** Wie {@link matchIconEntry}, aber immer mit Icon (Fallback statt `null`). */
-export function iconForItem(rawName: string): { Icon: LucideIcon; label: string | null } {
+/**
+ * Wie {@link matchIconEntry}, aber immer mit Icon-Komponente (Fallback statt
+ * `null`). `variant` wählt outline (Standard, große Ansichten/Regal) oder
+ * filled (sehr kleine Listen).
+ */
+export function iconForItem(
+  rawName: string,
+  variant: IconVariant = 'outline',
+): { Icon: IconComponent; label: string | null } {
   const entry = matchIconEntry(rawName);
-  return entry ? { Icon: entry.Icon, label: entry.label } : { Icon: FALLBACK_ICON, label: null };
+  const motif = entry?.motif ?? FALLBACK_MOTIF;
+  return { Icon: motif[variant], label: entry?.label ?? null };
 }

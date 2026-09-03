@@ -268,7 +268,7 @@ function CellItems({ items }: { items: Item[] }) {
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {shown.map((it) => {
-        const { Icon, label } = iconForItem(it.name);
+        const { Icon, label } = iconForItem(it.name, 'outline');
         return (
           <span
             key={it.id}
