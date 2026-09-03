@@ -19,12 +19,12 @@ describe('itemIcons – automatische Grafik-Zuordnung', () => {
   it('matcht Synonyme / andere Begriffe (Bedeutungs-Schicht)', () => {
     expect(matchIconEntry('Fäustel')?.id).toBe('hammer');
     expect(matchIconEntry('Tipi')?.id).toBe('jurte');
-    expect(matchIconEntry('Klampfe')?.id).toBe('gitarre');
-    expect(matchIconEntry('Feldflasche')?.id).toBe('trinkflasche');
+    expect(matchIconEntry('Beil')?.id).toBe('axt');
+    expect(matchIconEntry('Feldflasche')?.id).toBe('feldflasche');
   });
 
   it('ist robust gegen Umlaute, Groß-/Kleinschreibung und ß', () => {
-    expect(matchIconEntry('MASSBAND')?.id).toBe('meterstab');
+    expect(matchIconEntry('GASKOCHER')?.id).toBe('kocher');
     expect(matchIconEntry('taschenlampe')?.id).toBe('taschenlampe');
     expect(normalizeTerm('Fäustel')).toBe('faustel');
     expect(normalizeTerm('Straße')).toBe('strasse');

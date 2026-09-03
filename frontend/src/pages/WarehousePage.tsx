@@ -245,10 +245,11 @@ function Shelf({
   );
 }
 
-// Grafik-Raster ist auf 4×3 = 12 Zellen begrenzt; darüber zeigt die letzte
-// Zelle „+N". Spaltenzahl ≈ √Zellen (max. 4), sodass das Raster eher breit als
-// hoch wächst: 2 → 2×1, 3 → 2×2, 6 → 3×2, 12 → 4×3.
-const CELL_GRID_MAX = 12;
+// Grafik-Raster ist fest 4-spaltig (min. 4×4 = 16 Zellen); darüber zeigt die
+// letzte Zelle „+N". Feste 4 Spalten sorgen dafür, dass einzelne Icons klein
+// bleiben und nicht das ganze Fach ausfüllen.
+const CELL_GRID_COLS = 4;
+const CELL_GRID_MAX = CELL_GRID_COLS * CELL_GRID_COLS;
 
 /**
  * Lose Gegenstände eines Regalfachs als Grafik-Raster. Mehrere Icons liegen
@@ -259,8 +260,7 @@ function CellItems({ items }: { items: Item[] }) {
   const overflow = items.length > CELL_GRID_MAX;
   // Bei Überlauf bleibt Platz für die „+N"-Zelle.
   const shown = overflow ? items.slice(0, CELL_GRID_MAX - 1) : items;
-  const cellCount = shown.length + (overflow ? 1 : 0);
-  const cols = Math.min(4, Math.ceil(Math.sqrt(cellCount)));
+  const cols = CELL_GRID_COLS;
 
   return (
     <div
@@ -268,7 +268,7 @@ function CellItems({ items }: { items: Item[] }) {
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {shown.map((it) => {
-        const { Icon, label } = iconForItem(it.name);
+        const { Icon, label } = iconForItem(it.name, 'outline');
         return (
           <span
             key={it.id}
