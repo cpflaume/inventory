@@ -6,7 +6,7 @@
 # ($BUILDPLATFORM) – npm/Vite wird also nur einmal (amd64) ausgeführt und NICHT
 # unter QEMU-Emulation je Ziel-Arch. Nur der triviale nginx-Runtime-Stage
 # (statische Dateien kopieren) wird pro Ziel-Arch gebaut.
-FROM --platform=$BUILDPLATFORM node:24-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
