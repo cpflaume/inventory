@@ -61,7 +61,7 @@ jobs:
     # Echte Postgres als Service-Container (robuster als Testcontainers auf dem Runner).
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:19-alpine
         env:
           POSTGRES_DB: jurtenburg
           POSTGRES_USER: jurtenburg
@@ -122,7 +122,7 @@ jobs:
       - name: Set up Node 22
         uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -156,7 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:19-alpine
         env:
           POSTGRES_DB: jurtenburg
           POSTGRES_USER: jurtenburg
@@ -213,7 +213,7 @@ jobs:
       - name: Set up Node 22
         uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
